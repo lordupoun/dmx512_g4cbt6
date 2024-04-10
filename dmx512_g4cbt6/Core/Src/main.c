@@ -59,7 +59,7 @@ void SystemClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-volatile uint8_t uartBuff1[513];
+volatile uint8_t uartBuff1[514];
 volatile uint8_t uartBuff2[515];
 volatile uint8_t uartBuff3[515];
 /* USER CODE END 0 */
@@ -72,11 +72,11 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
-	for(int i=0;i<513;i++)
+	for(int i=0;i<514;i++)
 					{
 						uartBuff1[i]=0;
 					}
-			uartBuff1[0]=0; //Testovací byty
+			uartBuff1[0]=222; //Testovací byty
 			uartBuff1[1]=255;
 			uartBuff1[2]=255;
 			uartBuff1[3]=20;
@@ -102,6 +102,7 @@ int main(void)
 			uartBuff3[510]=5;
 			uartBuff3[511]=255;
 			uartBuff3[512]=255;
+			uartBuff3[513]=50;
 			for(int i=0;i<515;i++)
 					{
 						uartBuff2[i]=0;
@@ -149,8 +150,8 @@ int main(void)
   ILI9341_Init();//initial driver setup to drive ili9341
   SwitchToTransmit();
   HAL_TIM_Base_Start_IT(&htim2); //Zahájí časovač na odesílání DMX512
-  HAL_UARTEx_ReceiveToIdle_IT(&huart1, uartBuff1, 513); //Začne přijímání DMX512 (musí být dvakrát, jinak se nechytí vždy)
-  HAL_UARTEx_ReceiveToIdle_IT(&huart1, uartBuff1, 513); //TODO: Při čtení cizího DMX signálu nepřečte první nultej byt a tím pádem nedopíše poslední byte z DMXka, na starým to fungovalo, je to chyba HALu asi
+  HAL_UARTEx_ReceiveToIdle_IT(&huart2, uartBuff1, 514); //Začne přijímání DMX512 (musí být dvakrát, jinak se nechytí vždy)
+  HAL_UARTEx_ReceiveToIdle_IT(&huart2, uartBuff1, 514); //TODO: Při čtení cizího DMX signálu nepřečte první nultej byt a tím pádem nedopíše poslední byte z DMXka, na starým to fungovalo, je to chyba HALu asi
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -263,11 +264,13 @@ void SwitchToReceiveOnly()
 }
 void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size) //Po prijmuti celeho paketu:
 {
-	/*for(int i=512; i>=0; i--)
-	{
-		uartBuff3[i+1]=uartBuff1[i];
-	}*/
-	HAL_UARTEx_ReceiveToIdle_IT(&huart1, uartBuff1, 513);
+
+	HAL_UARTEx_ReceiveToIdle_IT(&huart2, uartBuff1, 513);
+	for(int i=512; i!=0; i--)
+		{
+			uartBuff3[i+1]=uartBuff1[i];
+		}
+	//uartBuff1[0]=0;
 	/*if(HAL_UARTEx_GetRxEventType(huart)==HAL_UART_RXEVENT_IDLE)
 	{
 		for(int i=512; i>=0; i--)
@@ -299,7 +302,10 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim) //Po doběhnutí ča
 	//while(i--);
 	//Přidat MAB...
 	//HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13); //TODO: Nastavit délku MAB (dle osciloskopu)
-	HAL_UART_Transmit_IT(&huart2, uartBuff1, 513); //TODO: sizeof(uartBuff1)
+	//uartBuff1[0]=222;
+	HAL_UART_Transmit_IT(&huart2, uartBuff3, 513); //TODO: sizeof(uartBuff1)
+	uartBuff1[513]=50;
+	HAL_UART_Transmit_IT(&huart1, uartBuff3, 514);
 	//uartBuff1[3]=uartBuff1[3]+1;
 	//HAL_UART_Transmit_IT(&huart1, uartBuff2, 515);
 	//uartBuff2[1]=uartBuff2[1]+1;
