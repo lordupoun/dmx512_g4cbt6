@@ -77,8 +77,8 @@ int main(void)
 						uartBuff1[i]=0;
 					}
 			uartBuff1[0]=0; //Testovací byty
-			uartBuff1[1]=255;
-			uartBuff1[2]=10;
+			uartBuff1[1]=0;
+			uartBuff1[2]=255;
 			uartBuff1[3]=10;
 			uartBuff1[4]=255;
 			uartBuff1[5]=255;
@@ -98,7 +98,7 @@ int main(void)
 			uartBuff3[2]=255;
 			uartBuff3[3]=0;
 			uartBuff3[4]=0;
-			uartBuff3[5]=255;
+			uartBuff3[5]=0;
 			uartBuff3[506]=1;
 			uartBuff3[507]=2;
 			uartBuff3[508]=3;
@@ -272,14 +272,18 @@ void SwitchToReceiveOnly()
 void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size) //Po prijmuti celeho paketu:
 {
 	//---------------------------Nastavit, že tohle je jen pro příjem z UART2; pro UART1 nastavit něco jinýho a svůj program doladit dle FreeStyleru (pokud ti to nepůjde, vykašli se na to a řeš příjem)
+	for(int i=0; i<513; i++) //Pro UART2 příjem (vyzkoušet pak s jinejma pultama) //zkontrolovat ten poslední byte.... //vymyslet bezposunovou variantu. - přehodit nad Receive
+				{
+					uartBuff3[i]=uartBuff1[i+1];
+				}
 	HAL_UARTEx_ReceiveToIdle_IT(&huart2, uartBuff1, 514);
 	/*for(int i=512; i!=-1; i--) //Přepsat
 		{
 			uartBuff3[i+1]=uartBuff1[i];
 		}*/
-	/*for(int i=0; i<513; i++) //Pro UART2 příjem (vyzkoušet pak s jinejma pultama) //zkontrolovat ten poslední byte.... //vymyslet bezposunovou variantu.
+	/*for(int i=0; i<513; i++) //Pro UART2 příjem (vyzkoušet pak s jinejma pultama) //zkontrolovat ten poslední byte.... //vymyslet bezposunovou variantu. - přehodit nad Receive
 			{
-				uartBuff3[i]=uartBuff1[i];
+				uartBuff3[i]=uartBuff1[i+1];
 			}*/
 	//uartBuff1[0]=0;
 	/*if(HAL_UARTEx_GetRxEventType(huart)==HAL_UART_RXEVENT_IDLE)
@@ -356,10 +360,10 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) //Po odeslání -- pokud
 	{
 		SwitchPin_ToMode_GPIO_Output();
 		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2,GPIO_PIN_SET);
-	uint32_t i;
-	i=1000; //MTBF
-	while(i--);
-	HAL_UARTEx_ReceiveToIdle_IT(&huart2, uartBuff1, 514); //Aby se přijímal sinál i se spuštěním a při vytažení kabelu
+		//uint32_t i;
+		//i=1000; //MTBF
+		//while(i--);
+		HAL_UARTEx_ReceiveToIdle_IT(&huart2, uartBuff1, 514); //Aby se přijímal sinál i se spuštěním a při vytažení kabelu
 
 	   //HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2,GPIO_PIN_SET);
 	   HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2,GPIO_PIN_RESET);
