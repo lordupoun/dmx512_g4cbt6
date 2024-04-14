@@ -60,8 +60,8 @@ void SystemClock_Config(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 volatile uint8_t uartBuff1[514];
-volatile uint8_t uartBuff2[515];
-volatile uint8_t uartBuff3[515];
+volatile uint8_t uartBuff2[514];
+volatile uint8_t uartBuff3[514];
 /* USER CODE END 0 */
 
 /**
@@ -72,14 +72,16 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
-	for(int i=0;i<514;i++)
+	for(int i=0;i<514;i++)/////////////////////////////////////////////////ODESÍLACÍ KÓD -
 					{
 						uartBuff1[i]=0;
 					}
-			uartBuff1[0]=222; //Testovací byty
+			uartBuff1[0]=0; //Testovací byty
 			uartBuff1[1]=255;
-			uartBuff1[2]=255;
-			uartBuff1[3]=20;
+			uartBuff1[2]=10;
+			uartBuff1[3]=10;
+			uartBuff1[4]=255;
+			uartBuff1[5]=255;
 			uartBuff1[506]=1;
 			uartBuff1[507]=2;
 			uartBuff1[508]=3;
@@ -94,7 +96,9 @@ int main(void)
 			uartBuff3[0]=0; //Testovací byty
 			uartBuff3[1]=255;
 			uartBuff3[2]=255;
-			uartBuff3[3]=20;
+			uartBuff3[3]=0;
+			uartBuff3[4]=0;
+			uartBuff3[5]=255;
 			uartBuff3[506]=1;
 			uartBuff3[507]=2;
 			uartBuff3[508]=3;
@@ -102,8 +106,9 @@ int main(void)
 			uartBuff3[510]=5;
 			uartBuff3[511]=255;
 			uartBuff3[512]=255;
-			uartBuff3[513]=50;
-			for(int i=0;i<515;i++)
+			uartBuff3[512]=50;
+			//uartBuff3[513]=50;
+			/*for(int i=0;i<515;i++)
 					{
 						uartBuff2[i]=0;
 					}
@@ -119,7 +124,7 @@ int main(void)
 				uartBuff2[511]=5;
 				uartBuff2[512]=6;
 				uartBuff2[513]=7;
-				uartBuff2[514]=0xBB;
+				uartBuff2[514]=0xBB;*/
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -146,10 +151,12 @@ int main(void)
   MX_TIM4_Init();
   MX_USART1_UART_Init();
   MX_USART2_UART_Init();
+  MX_TIM6_Init();
   /* USER CODE BEGIN 2 */
   ILI9341_Init();//initial driver setup to drive ili9341
   SwitchToTransmit();
-  HAL_TIM_Base_Start_IT(&htim2); //Zahájí časovač na odesílání DMX512
+  //HAL_TIM_Base_Start_IT(&htim2); //Zahájí časovač na odesílání DMX512
+  HAL_UART_Transmit_IT(&huart2, uartBuff3, 513);
   HAL_UARTEx_ReceiveToIdle_IT(&huart2, uartBuff1, 514); //Začne přijímání DMX512 (musí být dvakrát, jinak se nechytí vždy)
   HAL_UARTEx_ReceiveToIdle_IT(&huart2, uartBuff1, 514); //TODO: Při čtení cizího DMX signálu nepřečte první nultej byt a tím pádem nedopíše poslední byte z DMXka, na starým to fungovalo, je to chyba HALu asi
   /* USER CODE END 2 */
@@ -264,12 +271,16 @@ void SwitchToReceiveOnly()
 }
 void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size) //Po prijmuti celeho paketu:
 {
-
-	HAL_UARTEx_ReceiveToIdle_IT(&huart2, uartBuff1, 513);
-	for(int i=512; i!=0; i--)
+	//---------------------------Nastavit, že tohle je jen pro příjem z UART2; pro UART1 nastavit něco jinýho a svůj program doladit dle FreeStyleru (pokud ti to nepůjde, vykašli se na to a řeš příjem)
+	HAL_UARTEx_ReceiveToIdle_IT(&huart2, uartBuff1, 514);
+	/*for(int i=512; i!=-1; i--) //Přepsat
 		{
 			uartBuff3[i+1]=uartBuff1[i];
-		}
+		}*/
+	/*for(int i=0; i<513; i++) //Pro UART2 příjem (vyzkoušet pak s jinejma pultama) //zkontrolovat ten poslední byte.... //vymyslet bezposunovou variantu.
+			{
+				uartBuff3[i]=uartBuff1[i];
+			}*/
 	//uartBuff1[0]=0;
 	/*if(HAL_UARTEx_GetRxEventType(huart)==HAL_UART_RXEVENT_IDLE)
 	{
@@ -289,36 +300,70 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size) //Po p
 }
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim) //Po doběhnutí časovače
 {
+	if(htim==&htim2)
+	{
 	//HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2,GPIO_PIN_SET);
-	uint32_t i=8*4000; //Timer na 1000=mikrosekundy <---------------------
+	//uint32_t i; //Timer na 1000=mikrosekundy <---------------------
 	//while(i--);
 	//HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2,GPIO_PIN_RESET);
 	//i=8*4000; //Timer na 1000=mikrosekundy <---------------------
 	//	while(i--);
-	SwitchPin_ToMode_UART(); //Přepne pin do režimu UART
-	i=8*50; //POVOLIT
-	while(i--); //POVOLIT
+	//HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2,GPIO_PIN_RESET);
+	//i=8*300; //POVOLIT //BreakLength
+	//while(i--); //POVOLIT
+	//HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2,GPIO_PIN_SET);
+	//i=8*10; //POVOLIT //BreakLength
+	//while(i--); //POVOLIT
+	HAL_TIM_Base_Stop_IT(&htim2);
+	HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2,GPIO_PIN_RESET);
+	HAL_TIM_Base_Start_IT(&htim6);
+	//SwitchPin_ToMode_UART(); //Přepne pin do režimu UART //MAB neřízené //TODO: Zkrátit pauzu
+	//i=8*10; //POVOLIT //BreakLength
+	//while(i--); //POVOLIT
 	//i=8*1000; //Timer na 1000=mikrosekundy <---------------------
 	//while(i--);
 	//Přidat MAB...
 	//HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13); //TODO: Nastavit délku MAB (dle osciloskopu)
 	//uartBuff1[0]=222;
-	HAL_UART_Transmit_IT(&huart2, uartBuff3, 513); //TODO: sizeof(uartBuff1)
-	uartBuff1[513]=50;
-	HAL_UART_Transmit_IT(&huart1, uartBuff3, 514);
+	//HAL_UART_Transmit_IT(&huart2, uartBuff3, 513); //TODO: sizeof(uartBuff1)
+	//uartBuff1[513]=50;
+	//HAL_UART_Transmit_IT(&huart1, uartBuff3, 514);
+
 	//uartBuff1[3]=uartBuff1[3]+1;
 	//HAL_UART_Transmit_IT(&huart1, uartBuff2, 515);
 	//uartBuff2[1]=uartBuff2[1]+1;
 	//HAL_UART_Transmit_IT(&huart1, "\n", sizeof("\n"));
 	//HAL_UARTEx_ReceiveToIdle_IT(&huart1, uartBuff1, 513); //Může tu být, z definice stejně nezačne přijímat pokud už příjem běží...
-}
-void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) //Po odeslání -- pokud uart2 -> přepnout na IDLE; pokud uart 1 -> nic
-{
-	//if(huart==&huart3) //TODO: Opravit pokud tu bude chyba; ale asi funguje
-	//{
+	}
+	else if(htim==&htim6)
+	{
+		//uint32_t i;
+		HAL_TIM_Base_Stop_IT(&htim6);
+		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2,GPIO_PIN_SET);
+		//i=500000; //Přidat Timer na MAB
+		//while(i--);
+		SwitchPin_ToMode_UART();
+		HAL_UART_Transmit_IT(&huart2, uartBuff3, 513); //TODO: sizeof(uartBuff1)
+		uartBuff1[513]=50;
+		HAL_UART_Transmit_IT(&huart1, uartBuff3, 514); //TODO: Dokončení tohohle transmitu tam vyvolá TX callback - to musíš fixnout vole! proto tam máš tu vlnku
 
-	   SwitchPin_ToMode_GPIO_Output();
+	}
+}
+
+void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) //Po odeslání -- pokud uart2 -> přepnout na IDLE; pokud uart 1 -> nic////////////////////////////////////////////////////
+{
+	if(huart==&huart2) //TODO: Opravit pokud tu bude chyba; ale asi funguje
+	{
+		SwitchPin_ToMode_GPIO_Output();
+		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2,GPIO_PIN_SET);
+	uint32_t i;
+	i=1000; //MTBF
+	while(i--);
+	HAL_UARTEx_ReceiveToIdle_IT(&huart2, uartBuff1, 514); //Aby se přijímal sinál i se spuštěním a při vytažení kabelu
+
+	   //HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2,GPIO_PIN_SET);
 	   HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2,GPIO_PIN_RESET);
+	   HAL_TIM_Base_Start_IT(&htim6);
 	  // uint32_t i=8*100; //Timer na 1000=mikrosekundy <---------------------
 	   	//   while(i--);
 	   //HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2,GPIO_PIN_SET);
@@ -328,7 +373,7 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) //Po odeslání -- pokud
 
 	   //uint32_t i=8*1000; //Timer na 1000=mikrosekundy
 	   //	while(i--);
-	//}
+	}
 }
 
 void SwitchPin_ToMode_GPIO_Output(void) //TODO: přidat nastaveni PINu k prepnuti
@@ -336,8 +381,8 @@ void SwitchPin_ToMode_GPIO_Output(void) //TODO: přidat nastaveni PINu k prepnut
     GPIO_InitTypeDef GPIO_Initialize;
     GPIO_Initialize.Pin = GPIO_PIN_2;
     GPIO_Initialize.Mode = GPIO_MODE_OUTPUT_PP;
-    GPIO_Initialize.Pull = GPIO_PULLUP;
-    GPIO_Initialize.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+    //GPIO_Initialize.Pull = GPIO_PULLUP; //Taky jsem zmenil rychlost
+    GPIO_Initialize.Speed = GPIO_SPEED_FREQ_MEDIUM;
     HAL_GPIO_Init(GPIOA, &GPIO_Initialize);
 }
 void SwitchPin_ToMode_UART(void)
@@ -345,9 +390,9 @@ void SwitchPin_ToMode_UART(void)
     GPIO_InitTypeDef GPIO_Initialize;
     GPIO_Initialize.Pin = GPIO_PIN_2;
     GPIO_Initialize.Mode = GPIO_MODE_AF_PP;  //Alternate function
-    GPIO_Initialize.Pull = GPIO_PULLUP;
+    //GPIO_Initialize.Pull = GPIO_PULLUP;
     GPIO_Initialize.Alternate = GPIO_AF7_USART2; //Novinka pro toto MCU
-    GPIO_Initialize.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+    GPIO_Initialize.Speed = GPIO_SPEED_FREQ_MEDIUM;
     HAL_GPIO_Init(GPIOA, &GPIO_Initialize);
 }
 /* USER CODE END 4 */
