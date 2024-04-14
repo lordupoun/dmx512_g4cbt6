@@ -61,7 +61,7 @@ void SystemClock_Config(void);
 /* USER CODE BEGIN 0 */
 volatile uint8_t uartBuff1[514];
 volatile uint8_t uartBuff2[514];
-volatile uint8_t uartBuff3[514];
+volatile uint8_t uartBuff3[513];
 /* USER CODE END 0 */
 
 /**
@@ -79,7 +79,7 @@ int main(void)
 			uartBuff1[0]=0; //Testovací byty
 			uartBuff1[1]=0;
 			uartBuff1[2]=255;
-			uartBuff1[3]=10;
+			uartBuff1[3]=255;
 			uartBuff1[4]=255;
 			uartBuff1[5]=255;
 			uartBuff1[506]=1;
@@ -95,18 +95,18 @@ int main(void)
 						}
 			uartBuff3[0]=0; //Testovací byty
 			uartBuff3[1]=255;
-			uartBuff3[2]=255;
+			uartBuff3[2]=0;
 			uartBuff3[3]=0;
-			uartBuff3[4]=0;
+			uartBuff3[4]=255;
 			uartBuff3[5]=0;
 			uartBuff3[506]=1;
-			uartBuff3[507]=2;
+			uartBuff3[507]=2; //90us BRAKE; MBTF 28 ms
 			uartBuff3[508]=3;
 			uartBuff3[509]=4;
 			uartBuff3[510]=5;
 			uartBuff3[511]=255;
-			uartBuff3[512]=255;
-			uartBuff3[512]=50;
+			uartBuff3[512]=0;
+			//uartBuff3[512]=50;
 			//uartBuff3[513]=50;
 			/*for(int i=0;i<515;i++)
 					{
@@ -152,6 +152,7 @@ int main(void)
   MX_USART1_UART_Init();
   MX_USART2_UART_Init();
   MX_TIM6_Init();
+  MX_TIM7_Init();
   /* USER CODE BEGIN 2 */
   ILI9341_Init();//initial driver setup to drive ili9341
   SwitchToTransmit();
@@ -272,10 +273,10 @@ void SwitchToReceiveOnly()
 void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size) //Po prijmuti celeho paketu:
 {
 	//---------------------------Nastavit, že tohle je jen pro příjem z UART2; pro UART1 nastavit něco jinýho a svůj program doladit dle FreeStyleru (pokud ti to nepůjde, vykašli se na to a řeš příjem)
-	for(int i=0; i<513; i++) //Pro UART2 příjem (vyzkoušet pak s jinejma pultama) //zkontrolovat ten poslední byte.... //vymyslet bezposunovou variantu. - přehodit nad Receive
+	/*for(int i=0; i<513; i++) //Pro UART2 příjem (vyzkoušet pak s jinejma pultama) //zkontrolovat ten poslední byte.... //vymyslet bezposunovou variantu. - přehodit nad Receive
 				{
 					uartBuff3[i]=uartBuff1[i+1];
-				}
+				}*/
 	HAL_UARTEx_ReceiveToIdle_IT(&huart2, uartBuff1, 514);
 	/*for(int i=512; i!=-1; i--) //Přepsat
 		{
@@ -352,6 +353,17 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim) //Po doběhnutí ča
 		HAL_UART_Transmit_IT(&huart1, uartBuff3, 514); //TODO: Dokončení tohohle transmitu tam vyvolá TX callback - to musíš fixnout vole! proto tam máš tu vlnku
 
 	}
+	else if(htim==&htim7)
+	{
+		HAL_TIM_Base_Stop_IT(&htim7);
+		//uint32_t i;
+		//i=1000; //minimální MTBF
+		//while(i--);
+		//HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2,GPIO_PIN_SET);
+		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2,GPIO_PIN_RESET);
+		HAL_TIM_Base_Start_IT(&htim6);
+
+	}
 }
 
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) //Po odeslání -- pokud uart2 -> přepnout na IDLE; pokud uart 1 -> nic////////////////////////////////////////////////////
@@ -360,14 +372,9 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) //Po odeslání -- pokud
 	{
 		SwitchPin_ToMode_GPIO_Output();
 		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2,GPIO_PIN_SET);
-		//uint32_t i;
-		//i=1000; //MTBF
-		//while(i--);
-		HAL_UARTEx_ReceiveToIdle_IT(&huart2, uartBuff1, 514); //Aby se přijímal sinál i se spuštěním a při vytažení kabelu
+		HAL_TIM_Base_Start_IT(&htim7);
+		HAL_UARTEx_ReceiveToIdle_IT(&huart2, uartBuff1, 514); //Aby se přijímal sinál i se spuštěním a při vytažení kabelu; potřeba
 
-	   //HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2,GPIO_PIN_SET);
-	   HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2,GPIO_PIN_RESET);
-	   HAL_TIM_Base_Start_IT(&htim6);
 	  // uint32_t i=8*100; //Timer na 1000=mikrosekundy <---------------------
 	   	//   while(i--);
 	   //HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2,GPIO_PIN_SET);
