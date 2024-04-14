@@ -72,6 +72,7 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
+	int zadek=0;
 	for(int i=0;i<514;i++)/////////////////////////////////////////////////ODESÍLACÍ KÓD -
 					{
 						uartBuff1[i]=0;
@@ -149,23 +150,41 @@ int main(void)
   MX_SPI2_Init();
   MX_TIM2_Init();
   MX_TIM4_Init();
-  MX_USART1_UART_Init();
-  MX_USART2_UART_Init();
   MX_TIM6_Init();
   MX_TIM7_Init();
+  MX_USART1_UART_Init();
+  MX_USART2_UART_Init();
+
   /* USER CODE BEGIN 2 */
   ILI9341_Init();//initial driver setup to drive ili9341
   SwitchToTransmit();
-  //HAL_TIM_Base_Start_IT(&htim2); //Zahájí časovač na odesílání DMX512
-  HAL_UART_Transmit_IT(&huart2, uartBuff3, 513);
+
+
   HAL_UARTEx_ReceiveToIdle_IT(&huart2, uartBuff1, 514); //Začne přijímání DMX512 (musí být dvakrát, jinak se nechytí vždy)
   HAL_UARTEx_ReceiveToIdle_IT(&huart2, uartBuff1, 514); //TODO: Při čtení cizího DMX signálu nepřečte první nultej byt a tím pádem nedopíše poslední byte z DMXka, na starým to fungovalo, je to chyba HALu asi
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+
+	  if(zadek==0)
+	  	  {
+		  //přidat if do Callbacku tak aby to fakt bylo jak předtím a forcyklus na opakování pro jistotu.
+		  SwitchPin_ToMode_GPIO_Output();
+		  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2,GPIO_PIN_SET);
+		  uint32_t i;
+		  i=1000; //MTBF
+		  while(i--);
+		  HAL_UARTEx_ReceiveToIdle_IT(&huart2, uartBuff1, 514); //Aby se přijímal sinál i se spuštěním a při vytažení kabelu
+
+		  	   //HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2,GPIO_PIN_SET);
+		  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2,GPIO_PIN_RESET);
+		  HAL_TIM_Base_Start_IT(&htim6);
+		  zadek=1;
+	  	  }
 	  //HAL_UART_Transmit_IT(&huart3, uartBuff1, 513);
 		  ILI9341_Fill_Screen(RED);
 		  	  		ILI9341_Set_Rotation(SCREEN_HORIZONTAL_2);
@@ -311,8 +330,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim) //Po doběhnutí ča
 	//uint32_t i; //Timer na 1000=mikrosekundy <---------------------
 	//while(i--);
 	//HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2,GPIO_PIN_RESET);
-	//i=8*4000; //Timer na 1000=mikrosekundy <---------------------
-	//	while(i--);
+	//i=8*4000; //Timer na 1000=mikrosekundy <---------------------///////////////////////-----------------Zatím je to problém jen s mým zařízením; divný je, že ho nemůže chytit jen po připojení... a pak ty data nasype někam jinam; Něco to blbě odešle na začátku...
 	//HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2,GPIO_PIN_RESET);
 	//i=8*300; //POVOLIT //BreakLength
 	//while(i--); //POVOLIT
