@@ -62,6 +62,7 @@ void SystemClock_Config(void);
 volatile uint8_t uartBuff1[514];
 volatile uint8_t uartBuff2[514];
 volatile uint8_t uartBuff3[513];
+int zadek=0;
 /* USER CODE END 0 */
 
 /**
@@ -70,9 +71,8 @@ volatile uint8_t uartBuff3[513];
   */
 int main(void)
 {
-
   /* USER CODE BEGIN 1 */
-	int zadek=0;
+
 	for(int i=0;i<514;i++)/////////////////////////////////////////////////ODESÍLACÍ KÓD -
 					{
 						uartBuff1[i]=0;
@@ -96,9 +96,9 @@ int main(void)
 						}
 			uartBuff3[0]=0; //Testovací byty
 			uartBuff3[1]=255;
-			uartBuff3[2]=0;
+			uartBuff3[2]=255;
 			uartBuff3[3]=0;
-			uartBuff3[4]=255;
+			uartBuff3[4]=0;
 			uartBuff3[5]=0;
 			uartBuff3[506]=1;
 			uartBuff3[507]=2; //90us BRAKE; MBTF 28 ms
@@ -159,7 +159,7 @@ int main(void)
   ILI9341_Init();//initial driver setup to drive ili9341
   SwitchToTransmit();
 
-
+  HAL_UART_Transmit_IT(&huart2, uartBuff3, 513);
   HAL_UARTEx_ReceiveToIdle_IT(&huart2, uartBuff1, 514); //Začne přijímání DMX512 (musí být dvakrát, jinak se nechytí vždy)
   HAL_UARTEx_ReceiveToIdle_IT(&huart2, uartBuff1, 514); //TODO: Při čtení cizího DMX signálu nepřečte první nultej byt a tím pádem nedopíše poslední byte z DMXka, na starým to fungovalo, je to chyba HALu asi
 
@@ -170,7 +170,7 @@ int main(void)
   while (1)
   {
 
-	  if(zadek==0)
+	 /* if(zadek==0)
 	  	  {
 		  //přidat if do Callbacku tak aby to fakt bylo jak předtím a forcyklus na opakování pro jistotu.
 		  SwitchPin_ToMode_GPIO_Output();
@@ -184,7 +184,7 @@ int main(void)
 		  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2,GPIO_PIN_RESET);
 		  HAL_TIM_Base_Start_IT(&htim6);
 		  zadek=1;
-	  	  }
+	  	  }*/
 	  //HAL_UART_Transmit_IT(&huart3, uartBuff1, 513);
 		  ILI9341_Fill_Screen(RED);
 		  	  		ILI9341_Set_Rotation(SCREEN_HORIZONTAL_2);
@@ -292,10 +292,10 @@ void SwitchToReceiveOnly()
 void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size) //Po prijmuti celeho paketu:
 {
 	//---------------------------Nastavit, že tohle je jen pro příjem z UART2; pro UART1 nastavit něco jinýho a svůj program doladit dle FreeStyleru (pokud ti to nepůjde, vykašli se na to a řeš příjem)
-	/*for(int i=0; i<513; i++) //Pro UART2 příjem (vyzkoušet pak s jinejma pultama) //zkontrolovat ten poslední byte.... //vymyslet bezposunovou variantu. - přehodit nad Receive
+	for(int i=0; i<513; i++) //Pro UART2 příjem (vyzkoušet pak s jinejma pultama) //zkontrolovat ten poslední byte.... //vymyslet bezposunovou variantu. - přehodit nad Receive
 				{
 					uartBuff3[i]=uartBuff1[i+1];
-				}*/
+				}
 	HAL_UARTEx_ReceiveToIdle_IT(&huart2, uartBuff1, 514);
 	/*for(int i=512; i!=-1; i--) //Přepsat
 		{
@@ -388,10 +388,27 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) //Po odeslání -- pokud
 {
 	if(huart==&huart2) //TODO: Opravit pokud tu bude chyba; ale asi funguje
 	{
-		SwitchPin_ToMode_GPIO_Output();
-		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2,GPIO_PIN_SET);
-		HAL_TIM_Base_Start_IT(&htim7);
-		HAL_UARTEx_ReceiveToIdle_IT(&huart2, uartBuff1, 514); //Aby se přijímal sinál i se spuštěním a při vytažení kabelu; potřeba
+		if(zadek<10) //ošetřuje chybu kdy po prvním startu odešle signál ve stavu tak, že ho druhý deska nenajde.
+		{
+			SwitchPin_ToMode_GPIO_Output();
+			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2,GPIO_PIN_SET);
+			uint32_t i;
+			i=1000; //MTBF
+			while(i--);
+			HAL_UARTEx_ReceiveToIdle_IT(&huart2, uartBuff1, 514); //Aby se přijímal sinál i se spuštěním a při vytažení kabelu
+			//HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2,GPIO_PIN_SET);
+			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2,GPIO_PIN_RESET);
+			HAL_TIM_Base_Start_IT(&htim6);
+			zadek++;
+		}
+		else
+		{
+			SwitchPin_ToMode_GPIO_Output();
+			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2,GPIO_PIN_SET);
+			HAL_TIM_Base_Start_IT(&htim7);
+			HAL_UARTEx_ReceiveToIdle_IT(&huart2, uartBuff1, 514); //Aby se přijímal sinál i se spuštěním a při vytažení kabelu; potřeba
+		}
+
 
 	  // uint32_t i=8*100; //Timer na 1000=mikrosekundy <---------------------
 	   	//   while(i--);
