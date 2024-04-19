@@ -169,7 +169,7 @@ int main(void)
   /* USER CODE BEGIN 2 */
   ReceiveFrom_PC();
   //ReceiveFrom_DMX();
-  ILI9341_Init();//initial driver setup to drive ili9341 ////////////////////////
+  ILI9341_Init();//initial driver setup to drive ili9341 /////////////////////////
   SwitchToTransmit(); //TODO: přepínatelnej režim - vysílám/nevysílám, ale to až budu mít hotovou komunikaci s PC asi...; Případně vypnutí přijímání a vysílání úplně
   HAL_TIM_Base_Start_IT(&htim2);
   HAL_UART_Transmit_IT(&huart2, uartBuff3, 513);
