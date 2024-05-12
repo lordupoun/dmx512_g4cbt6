@@ -59,9 +59,9 @@ void SystemClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-volatile uint8_t uartBuff1[514];
-volatile uint8_t uartBuff2[514];
-volatile uint8_t uartBuff3[513];
+volatile uint8_t uartBuff1[514]; //receive
+volatile uint8_t uartBuff2[520]; //SendToPCAnalyze
+volatile uint8_t uartBuff3[513]; //SendToDMX
 int zadek=0; //přepsat na uint8_t
 int toReceive=514; //přepsat na uint8_t
 uint8_t modeSelected=1;
@@ -120,12 +120,12 @@ int main(void)
 			uartBuff3[512]=0;
 			//uartBuff3[512]=50;
 			//uartBuff3[513]=50;
-			/*for(int i=0;i<515;i++)
+			for(int i=0;i<515;i++)
 					{
 						uartBuff2[i]=0;
 					}
-			uartBuff2[0]=0xAA;
-			uartBuff2[1]=0; //Testovací byty
+			uartBuff2[0]=121;
+			uartBuff2[1]=122; //Testovací byty
 				uartBuff2[2]=253;
 				uartBuff2[3]=254;
 				uartBuff2[4]=255;
@@ -135,8 +135,8 @@ int main(void)
 				uartBuff2[510]=4;
 				uartBuff2[511]=5;
 				uartBuff2[512]=6;
-				uartBuff2[513]=7;
-				uartBuff2[514]=0xBB;*/
+				uartBuff2[518]=131;
+				uartBuff2[519]=132;
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -393,18 +393,19 @@ void SwitchToReceiveOnly()
 void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size) //Po prijmuti celeho paketu:
 {
 	//---------------------------Nastavit, že tohle je jen pro příjem z UART2; pro UART1 nastavit něco jinýho a svůj program doladit dle FreeStyleru (pokud ti to nepůjde, vykašli se na to a řeš příjem)
-	if(modeSelected==1)
+	if(modeSelected==1) //PC
 	{
 		memcpy(uartBuff3, uartBuff1, 513 * sizeof(uint8_t));
 	}
-	else
+	else //DMX
 	{
 		for(int i=0; i<513; i++) //Pro UART2 příjem (vyzkoušet pak s jinejma pultama) //zkontrolovat ten poslední byte.... //vymyslet bezposunovou variantu. - přehodit nad Receive
 		{
-			uartBuff3[i]=uartBuff1[i+1]; //+1 pro uart2
+			uartBuff3[i]=uartBuff1[i+1]; //+1 pro uart2 TODO:memcpy(&a1[50], &a2[50], 10 * sizeof a[0]);
 		}
 	}
 	HAL_UARTEx_ReceiveToIdle_IT(uartRx, uartBuff1, toReceive);
+
 	/*for(int i=512; i!=-1; i--) //Přepsat
 		{
 			uartBuff3[i+1]=uartBuff1[i];
@@ -473,10 +474,16 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim) //Po doběhnutí ča
 		//uint32_t i;
 		HAL_TIM_Base_Stop_IT(&htim6);
 		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2,GPIO_PIN_SET);
-		//i=500000; //Přidat Timer na MAB
+		//Zde se vytváří MAB samo
+		//i=500000; //Přidat Timer na MAB, lze ji prodloužit dalším časovačem, ale přepnutí chvilku na UART chvíli trvá
 		//while(i--);
 		SwitchPin_ToMode_UART();
-		HAL_UART_Transmit_IT(&huart2, uartBuff3, 513); //TODO: sizeof(uartBuff1)
+		HAL_UART_Transmit_IT(&huart2, uartBuff3, 513); //TODO: sizeof(uartBuff1) //Přidat jako samostatnou funkci která by odesílala podle toho co jí dám, to bych musel hrozně zaifovat každý kolo
+		//HAL_UART_Transmit_IT(&huart1, 121, 1); //Vyřešit odesílání rychlejší než příjem
+		//HAL_UART_Transmit_IT(&huart1, 122, 1);
+		HAL_UART_Transmit_IT(&huart1, uartBuff2, 520);//TODO: Pokud už běží odesílání, neodešle se - mohl by být problém u moc krátkých MTBF (zkontrolovat zda jsou na pultu větší než 300us, které jsou zde navíc)
+		//HAL_UART_Transmit_IT(&huart1, 131, 1);
+		//HAL_UART_Transmit_IT(&huart1, 132, 1);
 		uartBuff1[513]=50;
 
 	}
@@ -496,12 +503,17 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim) //Po doběhnutí ča
 		ILI9341_Draw_Hollow_Rectangle_Coord(xmin, ymin, xmax, ymax, BLACK);
 	}
 }
-
+//Lze prodloužit reset i MTBF, ale cílem je nechat to co nejkratší tak, aby se nemršil vysílanej signál -> pokud bude chodit hodně rychlej signál a do PC bude chodit s dalšíma 6 bytama navíc, dostane se ven moc pozdě - to se ale při upravování dostane tak i tak, protože ta naše potvora vysílá rychlostí ničeho... lepší by bylo odesílat jen pakety co se mají měnit; poslední možnost je úplně přepsat komunikaci s počítačem, kdy se už nebude komunikovat po DMX512 ale vlastním protokolem
+//1 Dodělat analýzu
+//2 Dodělat SW
+//3 Build SW
+//4 Dopsat práci
+//5 Pak řešit modifikace zpráv
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) //Po odeslání -- pokud uart2 -> přepnout na IDLE; pokud uart 1 -> nic////////////////////////////////////////////////////
 {
 	if(huart==&huart2) //TODO: Opravit pokud tu bude chyba; ale asi funguje
 	{
-		if(zadek<10) //ošetřuje chybu kdy po prvním startu odešle signál ve stavu tak, že ho druhý deska nenajde.
+		if(zadek<10) //ošetřuje chybu kdy po prvním startu odešle signál ve stavu tak, že ho druhá deska nenajde//odesílá prvních 10 rámců v blokovacím režimu
 		{
 			SwitchPin_ToMode_GPIO_Output();
 			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2,GPIO_PIN_SET);
@@ -517,7 +529,7 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) //Po odeslání -- pokud
 		else //Pro všechny další chody v neblokovacím režimu
 		{
 			SwitchPin_ToMode_GPIO_Output();
-			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2,GPIO_PIN_SET);
+			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2,GPIO_PIN_SET); //Tvoří MTBF, bez toho nefunguje (MTBF tvoří i pulty, a to poměrně dlouhý)
 			HAL_TIM_Base_Start_IT(&htim7);
 			HAL_UARTEx_ReceiveToIdle_IT(uartRx, uartBuff1, 514); //Aby se přijímal sinál i se spuštěním a při vytažení kabelu; potřeba
 		}
