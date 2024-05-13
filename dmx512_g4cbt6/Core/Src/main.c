@@ -167,8 +167,8 @@ int main(void)
   MX_TIM7_Init();
   MX_TIM17_Init();
   /* USER CODE BEGIN 2 */
-  ReceiveFrom_PC();
-  //ReceiveFrom_DMX();
+  //ReceiveFrom_PC();
+  ReceiveFrom_DMX();
   ILI9341_Init();//initial driver setup to drive ili9341 /////////////////////////
   SwitchToTransmit(); //TODO: přepínatelnej režim - vysílám/nevysílám, ale to až budu mít hotovou komunikaci s PC asi...; Případně vypnutí přijímání a vysílání úplně
   HAL_TIM_Base_Start_IT(&htim2);
@@ -481,6 +481,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim) //Po doběhnutí ča
 		HAL_UART_Transmit_IT(&huart2, uartBuff3, 513); //TODO: sizeof(uartBuff1) //Přidat jako samostatnou funkci která by odesílala podle toho co jí dám, to bych musel hrozně zaifovat každý kolo
 		//HAL_UART_Transmit_IT(&huart1, 121, 1); //Vyřešit odesílání rychlejší než příjem
 		//HAL_UART_Transmit_IT(&huart1, 122, 1);
+		memcpy(&uartBuff2[2], &uartBuff3[0], 513 * sizeof(uint8_t)); //kopírování jen pro to, co se zrovna používá! (v editačním režimu všechno...)
 		HAL_UART_Transmit_IT(&huart1, uartBuff2, 520);//TODO: Pokud už běží odesílání, neodešle se - mohl by být problém u moc krátkých MTBF (zkontrolovat zda jsou na pultu větší než 300us, které jsou zde navíc)
 		//HAL_UART_Transmit_IT(&huart1, 131, 1);
 		//HAL_UART_Transmit_IT(&huart1, 132, 1);
