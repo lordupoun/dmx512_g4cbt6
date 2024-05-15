@@ -62,11 +62,13 @@ void SystemClock_Config(void);
 volatile uint8_t uartBuff1[514]; //receive
 volatile uint8_t uartBuff2[520]; //SendToPCAnalyze
 volatile uint8_t uartBuff3[513]; //SendToDMX
-int zadek=0; //přepsat na uint8_t
+uint8_t packetsSentAfterStart=0; //přepsat na uint8_t
 int toReceive=514; //přepsat na uint8_t
 uint8_t modeSelected=1;
 UART_HandleTypeDef *uartRx; //výběr přijímacího uartu
-//Displejos:
+int menuNav;
+
+//Displej:
 int xmin;
 int xmax;
 int ymin;
@@ -81,62 +83,61 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
-	/*uint32_t w;
-	w=1000000; //MTBF
-	while(w--);*/
-	for(int i=0;i<514;i++)/////////////////////////////////////////////////ODESÍLACÍ KÓD -
-					{
-						uartBuff1[i]=0;
-					}
-			uartBuff1[0]=0; //Testovací byty
-			uartBuff1[1]=0;
-			uartBuff1[2]=255;
-			uartBuff1[3]=255;
-			uartBuff1[4]=255;
-			uartBuff1[5]=255;
-			uartBuff1[506]=1;
-			uartBuff1[507]=2;
-			uartBuff1[508]=3;
-			uartBuff1[509]=4;
-			uartBuff1[510]=5;
-			uartBuff1[511]=255;
-			uartBuff1[512]=255;
+	for(int i=0;i<514;i++)
+		{
+			uartBuff1[i]=0;
+		}
+	uartBuff1[0]=0;
+	uartBuff1[1]=0;
+	uartBuff1[2]=255;
+	uartBuff1[3]=255;
+	uartBuff1[4]=255;
+	uartBuff1[5]=255;
+	uartBuff1[506]=1;
+	uartBuff1[507]=2;
+	uartBuff1[508]=3;
+	uartBuff1[509]=4;
+	uartBuff1[510]=5;
+	uartBuff1[511]=255;
+	uartBuff1[512]=255;
+
+	for(int i=0;i<515;i++)
+		{
+			uartBuff2[i]=0;
+		}
+	uartBuff2[0]=121;
+	uartBuff2[1]=122;
+	uartBuff2[2]=253;
+	uartBuff2[3]=254;
+	uartBuff2[4]=255;
+	uartBuff2[507]=1;
+	uartBuff2[508]=2;
+	uartBuff2[509]=3;
+	uartBuff2[510]=4;
+	uartBuff2[511]=5;
+	uartBuff2[512]=6;
+	uartBuff2[518]=131;
+	uartBuff2[519]=132;
+
 	for(int i=0;i<513;i++)
-						{
-							uartBuff3[i]=0;
-						}
-			uartBuff3[0]=0; //Testovací byty
-			uartBuff3[1]=255;
-			uartBuff3[2]=255;
-			uartBuff3[3]=0;
-			uartBuff3[4]=0;
-			uartBuff3[5]=0;
-			uartBuff3[506]=1;
-			uartBuff3[507]=2; //90us BRAKE; MBTF 28 ms
-			uartBuff3[508]=3;
-			uartBuff3[509]=4;
-			uartBuff3[510]=5;
-			uartBuff3[511]=255;
-			uartBuff3[512]=0;
-			//uartBuff3[512]=50;
-			//uartBuff3[513]=50;
-			for(int i=0;i<515;i++)
-					{
-						uartBuff2[i]=0;
-					}
-			uartBuff2[0]=121;
-			uartBuff2[1]=122; //Testovací byty
-				uartBuff2[2]=253;
-				uartBuff2[3]=254;
-				uartBuff2[4]=255;
-				uartBuff2[507]=1;
-				uartBuff2[508]=2;
-				uartBuff2[509]=3;
-				uartBuff2[510]=4;
-				uartBuff2[511]=5;
-				uartBuff2[512]=6;
-				uartBuff2[518]=131;
-				uartBuff2[519]=132;
+		{
+			uartBuff3[i]=0;
+		}
+	uartBuff3[0]=0;
+	uartBuff3[1]=255;
+	uartBuff3[2]=255;
+	uartBuff3[3]=0;
+	uartBuff3[4]=0;
+	uartBuff3[5]=0;
+	uartBuff3[506]=1;
+	uartBuff3[507]=2;
+	uartBuff3[508]=3;
+	uartBuff3[509]=4;
+	uartBuff3[510]=5;
+	uartBuff3[511]=255;
+	uartBuff3[512]=0;
+
+
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -169,57 +170,144 @@ int main(void)
   /* USER CODE BEGIN 2 */
   //ReceiveFrom_PC();
   ReceiveFrom_DMX();
-  ILI9341_Init();//initial driver setup to drive ili9341 /////////////////////////
+  ILI9341_Init();
   SwitchToTransmit(); //TODO: přepínatelnej režim - vysílám/nevysílám, ale to až budu mít hotovou komunikaci s PC asi...; Případně vypnutí přijímání a vysílání úplně
   HAL_TIM_Base_Start_IT(&htim2);
   HAL_UART_Transmit_IT(&huart2, uartBuff3, 513);
-  HAL_UARTEx_ReceiveToIdle_IT(uartRx, uartBuff1, toReceive); //Začne přijímání DMX512 (musí být dvakrát, jinak se nechytí vždy)
+  HAL_UARTEx_ReceiveToIdle_IT(uartRx, uartBuff1, toReceive); //Začne přijímání DMX512
   HAL_UARTEx_ReceiveToIdle_IT(uartRx, uartBuff1, toReceive); //TODO: Při čtení cizího DMX signálu nepřečte první nultej byt a tím pádem nedopíše poslední byte z DMXka, na starým to fungovalo, je to chyba HALu asi
   uint16_t position_array[2];
   //Displejos: //TODO: Tlačítko pro ukončení přijímání (ostatní tlačítka jej zase zapnou (funkce ReceiveFrom_PC bude zapínat)). //Menu: Analyzátor DMX - Přijímač Only (přijíma z DMX); Generátor DMX - Vysílač Only (vysílá z PC); Modifikátor DMX - Přijímač a Vysílač - rele on (přijímá z DMX a PC); Přijímat z PC, Přijímat z DMX; Manuální ovládání - Barvy; Pod menu analýza manuální na zařízení
 
-  ILI9341_Draw_Text("Test DMX512", 10, 10, BLACK, 2, WHITE);
+  /*ILI9341_Draw_Text("Test DMX512", 10, 10, BLACK, 2, WHITE);
   ILI9341_Draw_Filled_Rectangle_Coord(20, 60, 80, 120, RED);
  	 ILI9341_Draw_Filled_Rectangle_Coord(20, 140, 80, 200, GREEN);
  	 ILI9341_Draw_Filled_Rectangle_Coord(20, 220, 80, 280, BLUE);
  	ILI9341_Draw_Filled_Rectangle_Coord(160, 60, 220, 120, PINK);
  	ILI9341_Draw_Filled_Rectangle_Coord(160, 140, 220, 200, LIGHTGREY);
- 	ILI9341_Draw_Filled_Rectangle_Coord(160, 220, 220, 280, DARKGREY);
+ 	ILI9341_Draw_Filled_Rectangle_Coord(160, 220, 220, 280, DARKGREY);*/
+  Draw_MainMenu1_Horizontal();
+  menuNav=1;
+  //Draw_NavigationBar_Right_Horizontal();
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  while (1)
-  {
+while (1)
+	{
+	if(TP_Touchpad_Pressed())
+	{
+		uint16_t x_pos = 0;
+		uint16_t y_pos = 0;
 
-	 /* if(zadek==0)
-	  	  {
-		  //přidat if do Callbacku tak aby to fakt bylo jak předtím a forcyklus na opakování pro jistotu.
-		  SwitchPin_ToMode_GPIO_Output();
-		  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2,GPIO_PIN_SET);
-		  uint32_t i;
-		  i=1000; //MTBF
-		  while(i--);
-		  HAL_UARTEx_ReceiveToIdle_IT(&huart2, uartBuff1, 514); //Aby se přijímal sinál i se spuštěním a při vytažení kabelu
+		if(TP_Read_Coordinates(position_array) == TOUCHPAD_DATA_OK)
+		{
+			x_pos = -(position_array[1]-320);
+			y_pos = position_array[0];
 
-		  	   //HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2,GPIO_PIN_SET);
-		  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2,GPIO_PIN_RESET);
-		  HAL_TIM_Base_Start_IT(&htim6);
-		  zadek=1;
-	  	  }*/
-	  //HAL_UART_Transmit_IT(&huart3, uartBuff1, 513);
+			if(x_pos>250&&y_pos>205&&x_pos<320&&y_pos<240&&menuNav==1) //Vpřed MainMenu
+			{
+				Draw_MainMenu2_Horizontal();
+			}
+			if(x_pos>0&&y_pos>205&&x_pos<70&&y_pos<240&&menuNav==2) //Zpátky MainMenu
+			{
+				Draw_MainMenu1_Horizontal();
+			}
+			if(x_pos>20&&y_pos>29&&x_pos<300&&y_pos<79&&menuNav==1)
+			{
+				menuNav=3;
+				ILI9341_Fill_Screen(DARKGREY);
+				Draw_NavigationBar_Left_Horizontal();
+				ILI9341_Draw_Text("Analyza signalu", 0, 0, BLACK, 2, DARKGREY);
+			}
+			if(x_pos>20&&y_pos>85&&x_pos<300&&y_pos<135&&menuNav==1)
+			{
+				menuNav=3;
+				ILI9341_Fill_Screen(DARKGREY);
+				Draw_NavigationBar_Left_Horizontal();
+				ILI9341_Draw_Text("Generovani signalu", 0, 0, BLACK, 2, DARKGREY);
+			}
+			if(x_pos>20&&y_pos>141&&x_pos<300&&y_pos<191&&menuNav==1)
+			{
+				menuNav=3;
+				ILI9341_Fill_Screen(DARKGREY);
+				Draw_NavigationBar_Left_Horizontal();
+				ILI9341_Draw_Text("Modifikace signalu", 0, 0, BLACK, 2, DARKGREY);
+;			}
+			if(x_pos>20&&y_pos>29&&x_pos<300&&y_pos<79&&menuNav==2) //Manualni ovladani page1
+			{
+				//x_pos=0;
+				//y_pos=0;
+				menuNav=5;
+				ILI9341_Fill_Screen(DARKGREY);
+				Draw_NavigationBar_Left_Horizontal();
+				ILI9341_Draw_Text("Manualni analyza", 0, 0, BLACK, 2, DARKGREY);
+				Draw_NavigationBar_Right_Horizontal();
+				ILI9341_Draw_Text("1/2", 145, 220, BLACK, 2, DARKGREY);
+				char textToDisplay[10];
+				char charFromByte = (char)uartBuff3[1];
+				snprintf(textToDisplay, sizeof(textToDisplay), uartBuff3[1]);
+				//for(int a=0;a<20;a+=4)
+				/*//{
+int a=0;
+						ILI9341_Draw_Text(1+a+":"+uartBuff3[1+a], 10, 20+(a*2), BLACK, 2, DARKGREY);
+						ILI9341_Draw_Text(2+a+":"+uartBuff3[2+a], 10, 50+(a*2), BLACK, 2, DARKGREY);
+						ILI9341_Draw_Text(3+a+":"+uartBuff3[3+a], 10, 80+(a*2), BLACK, 2, DARKGREY);
+						ILI9341_Draw_Text(4+a+":"+uartBuff3[4+a], 10, 110+(a*2), BLACK, 2, DARKGREY);
 
-	  if(TP_Touchpad_Pressed())
-	  {
-		  uint16_t x_pos = 0;
-		  uint16_t y_pos = 0;
+				//}*/
+				ILI9341_Draw_Text(textToDisplay, 10, 20, BLACK, 2, DARKGREY);
+			}
+			if(x_pos>250&&y_pos>205&&x_pos<320&&y_pos<240&&menuNav==5) //Manualni ovladani page2
+			{
+				menuNav=6;
+				ILI9341_Draw_Text("2/2", 145, 220, BLACK, 2, DARKGREY);
 
-		  if(TP_Read_Coordinates(position_array) == TOUCHPAD_DATA_OK)
-		  {
-			  x_pos = position_array[0];
-			  y_pos = position_array[1];
-
-			  if(x_pos>20&&x_pos<80&&y_pos>60&&y_pos<120)
+			}
+			if(x_pos>20&&y_pos>85&&x_pos<300&&y_pos<135&&menuNav==2)
+			{
+				menuNav=4;
+				ILI9341_Fill_Screen(DARKGREY);
+				Draw_NavigationBar_Left_Horizontal();
+				ILI9341_Draw_Text("Manualni generovani", 0, 0, BLACK, 2, DARKGREY);
+			}
+			if(x_pos>0&&y_pos>205&&x_pos<70&&y_pos<240&&menuNav==3) //Zpátky SUB menu page1
+			{
+				menuNav=1;
+				Draw_MainMenu1_Horizontal();
+			}
+			if(x_pos>0&&y_pos>205&&x_pos<70&&y_pos<240&&menuNav==4) //Zpátky do SUB menu page2
+			{
+				menuNav=2;
+				Draw_MainMenu2_Horizontal();
+			}
+			if(x_pos>0&&y_pos>205&&x_pos<70&&y_pos<240&&menuNav==5) //Zpátky SUB menu
+			{
+				menuNav=2;
+				Draw_MainMenu2_Horizontal();
+			}
+			if(x_pos>0&&y_pos>205&&x_pos<70&&y_pos<240&&menuNav>5) //Zpátky SUB menu
+			{
+				menuNav-=1;
+				Draw_MainMenu2_Horizontal(); //Dodělat
+			}
+			/*menuNav=1;
+			ILI9341_Set_Rotation(SCREEN_HORIZONTAL_2);
+			ILI9341_Fill_Screen(DARKGREY);
+			ILI9341_Draw_Text("DMX512 ANALYZATOR", 58, 5, BLACK, 2, DARKGREY);
+			ILI9341_Draw_Filled_Rectangle_Coord(20, 29, 300, 79, LIGHTGREY); //+10
+			ILI9341_Draw_Text("Analyza signalu", 68, 44, BLACK, 2, LIGHTGREY); //+5
+			ILI9341_Draw_Filled_Rectangle_Coord(20, 85, 300, 135, LIGHTGREY);
+			ILI9341_Draw_Text("Generovani signalu", 48, 100, BLACK, 2, LIGHTGREY);
+			ILI9341_Draw_Filled_Rectangle_Coord(20, 141, 300, 191, LIGHTGREY);
+			ILI9341_Draw_Text("Modifikace signalu", 48, 156, BLACK, 2, LIGHTGREY);
+			ILI9341_Draw_Filled_Rectangle_Coord(20, 172, 300, 212, LIGHTGREY);
+			ILI9341_Draw_Text("Manualni analyza", 22, 172, BLACK, 2, LIGHTGREY);
+			ILI9341_Draw_Filled_Rectangle_Coord(20, 218, 300, 258, LIGHTGREY);
+			ILI9341_Draw_Text("Manualni gen.", 38, 218, BLACK, 2, LIGHTGREY);
+			ILI9341_Draw_Text("1/2", 145, 220, BLACK, 2, DARKGREY);
+			Draw_NavigationBar_Right_Horizontal();*/
+			 /* if(x_pos>20&&x_pos<80&&y_pos>60&&y_pos<120)
 			  {
 				  uartBuff3[2]=255;
 				  uartBuff3[3]=0;
@@ -283,15 +371,15 @@ int main(void)
 				  ReceiveFrom_DMX();
 
 			  }
-
+*/
 	  }
-	 }
+}
 
-		 /* ILI9341_Fill_Screen(RED);
+		  /*ILI9341_Fill_Screen(RED);
 		  	  		ILI9341_Set_Rotation(SCREEN_HORIZONTAL_2);
 		  	  		ILI9341_Draw_Text("Dotykova obrazovka", 10, 10, BLACK, 2, WHITE);
 		  	  		ILI9341_Draw_Text("Muzete kreslit", 10, 30, GREEN, 2, WHITE);
-		  	  		ILI9341_Set_Rotation(SCREEN_VERTICAL_1);
+		  	  		//ILI9341_Set_Rotation(SCREEN_VERTICAL_1);
 		  	  		//HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
 		  	  		while(1)
 		  	  		{
@@ -307,8 +395,8 @@ int main(void)
 		  	  					if(TP_Read_Coordinates(position_array) == TOUCHPAD_DATA_OK)
 		  	  					{
 
-		  	  						x_pos = position_array[0];
-		  	  						y_pos = position_array[1];
+		  	  						x_pos = -(position_array[1]-320);
+		  	  						y_pos = position_array[0];
 
 		  	  						ILI9341_Draw_Filled_Circle(x_pos, y_pos, 2, BLACK);
 
@@ -320,7 +408,7 @@ int main(void)
 		  	  						ILI9341_Draw_Text(counter_buff, 10, 120, BLACK, 2, WHITE);
 
 
-		  	  						ILI9341_Set_Rotation(SCREEN_VERTICAL_1);
+		  	  						//ILI9341_Set_Rotation(SCREEN_VERTICAL_1);
 		  	  					}
 
 
@@ -405,68 +493,11 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size) //Po p
 		}
 	}
 	HAL_UARTEx_ReceiveToIdle_IT(uartRx, uartBuff1, toReceive);
-
-	/*for(int i=512; i!=-1; i--) //Přepsat
-		{
-			uartBuff3[i+1]=uartBuff1[i];
-		}*/
-	/*for(int i=0; i<513; i++) //Pro UART2 příjem (vyzkoušet pak s jinejma pultama) //zkontrolovat ten poslední byte.... //vymyslet bezposunovou variantu. - přehodit nad Receive
-			{
-				uartBuff3[i]=uartBuff1[i+1];
-			}*/
-	//uartBuff1[0]=0;
-	/*if(HAL_UARTEx_GetRxEventType(huart)==HAL_UART_RXEVENT_IDLE)
-	{
-		for(int i=512; i>=0; i--)
-		{
-		uartBuff3[i+1]=uartBuff1[i];
-		}
-		HAL_UARTEx_ReceiveToIdle_IT(&huart1, uartBuff1, 513);//Zacit prijimat ------------ pokud visi ve vzduchu, muze prijimat nesmysly //!! Pokud nepřijmul všech 512 bytů, přidat nulu
-	}
-	else if(HAL_UARTEx_GetRxEventType(huart)==HAL_UART_RXEVENT_TC) //todo idle line
-	{
-	memcpy(uartBuff3, uartBuff1, 513 * sizeof(int));
-	HAL_UARTEx_ReceiveToIdle_IT(&huart1, uartBuff1, 513);
-	//Zacit prijimat ------------ pokud visi ve vzduchu, muze prijimat nesmysly //!! Pokud nepřijmul všech 512 bytů, přidat nulu
-	}
-	//HAL_UART_Transmit_IT(&huart1, uartBuff1, 513); <- pak by to mělo přijít sem, ale zatím to dám do časovače*/
 }
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim) //Po doběhnutí časovače
 {
 	if(htim==&htim2)
 	{
-	//HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2,GPIO_PIN_SET);
-	//uint32_t i; //Timer na 1000=mikrosekundy <---------------------
-	//while(i--);
-	//HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2,GPIO_PIN_RESET);
-	//i=8*4000; //Timer na 1000=mikrosekundy <---------------------///////////////////////-----------------Zatím je to problém jen s mým zařízením; divný je, že ho nemůže chytit jen po připojení... a pak ty data nasype někam jinam; Něco to blbě odešle na začátku...
-	//HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2,GPIO_PIN_RESET);
-	//i=8*300; //POVOLIT //BreakLength
-	//while(i--); //POVOLIT
-	//HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2,GPIO_PIN_SET);
-	//i=8*10; //POVOLIT //BreakLength
-	//while(i--); //POVOLIT
-			/*HAL_TIM_Base_Stop_IT(&htim2);
-			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2,GPIO_PIN_RESET);
-			HAL_TIM_Base_Start_IT(&htim6);*/
-	//SwitchPin_ToMode_UART(); //Přepne pin do režimu UART //MAB neřízené //TODO: Zkrátit pauzu
-	//i=8*10; //POVOLIT //BreakLength
-	//while(i--); //POVOLIT
-	//i=8*1000; //Timer na 1000=mikrosekundy <---------------------
-	//while(i--);
-	//Přidat MAB...
-	//HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13); //TODO: Nastavit délku MAB (dle osciloskopu)
-	//uartBuff1[0]=222;
-	//HAL_UART_Transmit_IT(&huart2, uartBuff3, 513); //TODO: sizeof(uartBuff1)
-	//uartBuff1[513]=50;
-	//HAL_UART_Transmit_IT(&huart1, uartBuff3, 514);
-
-	//uartBuff1[3]=uartBuff1[3]+1;
-	//HAL_UART_Transmit_IT(&huart1, uartBuff2, 515);
-	//uartBuff2[1]=uartBuff2[1]+1;
-	//HAL_UART_Transmit_IT(&huart1, "\n", sizeof("\n"));
-	//HAL_UARTEx_ReceiveToIdle_IT(&huart1, uartBuff1, 513); //Může tu být, z definice stejně nezačne přijímat pokud už příjem běží...
-	 //TODO: Dokončení tohohle transmitu tam vyvolá TX callback - to musíš fixnout vole! proto tam máš tu vlnku
 
 	}
 	else if(htim==&htim6)
@@ -479,22 +510,15 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim) //Po doběhnutí ča
 		//while(i--);
 		SwitchPin_ToMode_UART();
 		HAL_UART_Transmit_IT(&huart2, uartBuff3, 513); //TODO: sizeof(uartBuff1) //Přidat jako samostatnou funkci která by odesílala podle toho co jí dám, to bych musel hrozně zaifovat každý kolo
-		//HAL_UART_Transmit_IT(&huart1, 121, 1); //Vyřešit odesílání rychlejší než příjem
-		//HAL_UART_Transmit_IT(&huart1, 122, 1);
+
 		memcpy(&uartBuff2[2], &uartBuff3[0], 513 * sizeof(uint8_t)); //kopírování jen pro to, co se zrovna používá! (v editačním režimu všechno...)
-		HAL_UART_Transmit_IT(&huart1, uartBuff2, 520);//TODO: Pokud už běží odesílání, neodešle se - mohl by být problém u moc krátkých MTBF (zkontrolovat zda jsou na pultu větší než 300us, které jsou zde navíc)
-		//HAL_UART_Transmit_IT(&huart1, 131, 1);
-		//HAL_UART_Transmit_IT(&huart1, 132, 1);
+		HAL_UART_Transmit_IT(&huart1, uartBuff2, 520);
 		uartBuff1[513]=50;
 
 	}
 	else if(htim==&htim7)
 	{
 		HAL_TIM_Base_Stop_IT(&htim7);
-		//uint32_t i;
-		//i=1000; //minimální MTBF
-		//while(i--);
-		//HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2,GPIO_PIN_SET);
 		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2,GPIO_PIN_RESET);
 		HAL_TIM_Base_Start_IT(&htim6);
 	}
@@ -508,43 +532,33 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim) //Po doběhnutí ča
 //1 Dodělat analýzu
 //2 Dodělat SW
 //3 Build SW
+//Zkusit vymyslet algoritmus pro kontrolu časování
 //4 Dopsat práci
 //5 Pak řešit modifikace zpráv
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) //Po odeslání -- pokud uart2 -> přepnout na IDLE; pokud uart 1 -> nic////////////////////////////////////////////////////
 {
-	if(huart==&huart2) //TODO: Opravit pokud tu bude chyba; ale asi funguje
+	if(huart==&huart2)
 	{
-		if(zadek<10) //ošetřuje chybu kdy po prvním startu odešle signál ve stavu tak, že ho druhá deska nenajde//odesílá prvních 10 rámců v blokovacím režimu
+		if(packetsSentAfterStart<10) //ošetřuje chybu kdy po prvním startu odešle signál ve stavu tak, že ho druhá deska nenajde -> odesílá prvních 10 paketů v blokovacím režimu
 		{
 			SwitchPin_ToMode_GPIO_Output();
 			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2,GPIO_PIN_SET);
 			uint32_t i;
-			i=1000; //MTBF
-			while(i--);
-			HAL_UARTEx_ReceiveToIdle_IT(uartRx, uartBuff1, toReceive); //Aby se přijímal sinál i se spuštěním a při vytažení kabelu
+			i=1000;
+			while(i--); //MTBF - v blokovacím režimu
+			HAL_UARTEx_ReceiveToIdle_IT(uartRx, uartBuff1, toReceive); //Aby se přijímal sinál i se spuštěním zařízení a po zapojení kabelu
 			//HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2,GPIO_PIN_SET);
 			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2,GPIO_PIN_RESET);
 			HAL_TIM_Base_Start_IT(&htim6);
-			zadek++;
+			packetsSentAfterStart++;
 		}
 		else //Pro všechny další chody v neblokovacím režimu
 		{
 			SwitchPin_ToMode_GPIO_Output();
-			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2,GPIO_PIN_SET); //Tvoří MTBF, bez toho nefunguje (MTBF tvoří i pulty, a to poměrně dlouhý)
+			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2,GPIO_PIN_SET); //Tvoří MTBF
 			HAL_TIM_Base_Start_IT(&htim7);
-			HAL_UARTEx_ReceiveToIdle_IT(uartRx, uartBuff1, 514); //Aby se přijímal sinál i se spuštěním a při vytažení kabelu; potřeba
+			HAL_UARTEx_ReceiveToIdle_IT(uartRx, uartBuff1, 514); //Aby se přijímal sinál i se spuštěním zařízení a po zapojení kabelu
 		}
-
-
-	  // uint32_t i=8*100; //Timer na 1000=mikrosekundy <---------------------
-	   	//   while(i--);
-	   //HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2,GPIO_PIN_SET);
-	   //i=8*500; //Timer na 1000=mikrosekundy <---------------------
-	   //while(i--);
-	   //HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2,GPIO_PIN_RESET); //TODO: Pojmenovat podle jmen - zapomínáš to přepsat potom,
-
-	   //uint32_t i=8*1000; //Timer na 1000=mikrosekundy
-	   //	while(i--);
 	}
 }
 void ReceiveFrom_PC() {
@@ -562,7 +576,7 @@ void SwitchPin_ToMode_GPIO_Output(void) //TODO: přidat nastaveni PINu k prepnut
     GPIO_InitTypeDef GPIO_Initialize;
     GPIO_Initialize.Pin = GPIO_PIN_2;
     GPIO_Initialize.Mode = GPIO_MODE_OUTPUT_PP;
-    //GPIO_Initialize.Pull = GPIO_PULLUP; //Taky jsem zmenil rychlost
+    //GPIO_Initialize.Pull = GPIO_PULLUP;
     GPIO_Initialize.Speed = GPIO_SPEED_FREQ_MEDIUM;
     HAL_GPIO_Init(GPIOA, &GPIO_Initialize);
 }
@@ -572,9 +586,82 @@ void SwitchPin_ToMode_UART(void)
     GPIO_Initialize.Pin = GPIO_PIN_2;
     GPIO_Initialize.Mode = GPIO_MODE_AF_PP;  //Alternate function
     //GPIO_Initialize.Pull = GPIO_PULLUP;
-    GPIO_Initialize.Alternate = GPIO_AF7_USART2; //Novinka pro toto MCU
+    GPIO_Initialize.Alternate = GPIO_AF7_USART2; //Musi byt pouzito pro g431
     GPIO_Initialize.Speed = GPIO_SPEED_FREQ_MEDIUM;
     HAL_GPIO_Init(GPIOA, &GPIO_Initialize);
+}
+void Draw_MainMenu(void)
+{
+	ILI9341_Fill_Screen(DARKGREY);
+	ILI9341_Draw_Text("DMX512 ANALYZATOR", 18, 5, BLACK, 2, DARKGREY);
+	ILI9341_Draw_Filled_Rectangle_Coord(10, 24, 230, 64, LIGHTGREY);
+	ILI9341_Draw_Text("Analyza signalu", 27, 34, BLACK, 2, LIGHTGREY);
+	ILI9341_Draw_Filled_Rectangle_Coord(10, 70, 230, 110, LIGHTGREY);
+	ILI9341_Draw_Text("Generovani signalu", 12, 80, BLACK, 2, LIGHTGREY);
+	ILI9341_Draw_Filled_Rectangle_Coord(10, 116, 230, 156, LIGHTGREY);
+	ILI9341_Draw_Text("Modifikace signalu", 12, 126, BLACK, 2, LIGHTGREY);
+	ILI9341_Draw_Filled_Rectangle_Coord(10, 162, 230, 202, LIGHTGREY);
+	ILI9341_Draw_Text("Manualni analyza", 22, 172, BLACK, 2, LIGHTGREY);
+	ILI9341_Draw_Filled_Rectangle_Coord(10, 208, 230, 248, LIGHTGREY);
+	ILI9341_Draw_Text("Manualni gen.", 38, 218, BLACK, 2, LIGHTGREY);
+}
+void Draw_MainMenu1_Horizontal(void)
+{
+	menuNav=1;
+	ILI9341_Set_Rotation(SCREEN_HORIZONTAL_2);
+	ILI9341_Fill_Screen(DARKGREY);
+	ILI9341_Draw_Text("DMX512 ANALYZATOR", 10, 5, BLACK, 2, DARKGREY);
+	ILI9341_Draw_Filled_Rectangle_Coord(20, 29, 300, 79, LIGHTGREY); //+10
+	ILI9341_Draw_Text("Analyza signalu", 68, 44, BLACK, 2, LIGHTGREY); //+5
+	ILI9341_Draw_Filled_Rectangle_Coord(20, 85, 300, 135, LIGHTGREY);
+	ILI9341_Draw_Text("Generovani signalu", 48, 100, BLACK, 2, LIGHTGREY);
+	ILI9341_Draw_Filled_Rectangle_Coord(20, 141, 300, 191, LIGHTGREY);
+	ILI9341_Draw_Text("Modifikace signalu", 48, 156, BLACK, 2, LIGHTGREY);
+	/*ILI9341_Draw_Filled_Rectangle_Coord(20, 172, 300, 212, LIGHTGREY);
+	ILI9341_Draw_Text("Manualni analyza", 22, 172, BLACK, 2, LIGHTGREY);
+	ILI9341_Draw_Filled_Rectangle_Coord(20, 218, 300, 258, LIGHTGREY);
+	ILI9341_Draw_Text("Manualni gen.", 38, 218, BLACK, 2, LIGHTGREY);*/
+	ILI9341_Draw_Text("1/2", 145, 220, BLACK, 2, DARKGREY);
+	Draw_NavigationBar_Right_Horizontal();
+}
+void Draw_MainMenu2_Horizontal(void)
+{
+	menuNav=2;
+	ILI9341_Set_Rotation(SCREEN_HORIZONTAL_2);
+	ILI9341_Fill_Screen(DARKGREY);
+	ILI9341_Draw_Text("DMX512 ANALYZATOR", 10, 5, BLACK, 2, DARKGREY);
+	ILI9341_Draw_Filled_Rectangle_Coord(20, 29, 300, 79, LIGHTGREY); //+10
+	ILI9341_Draw_Text("Manualni analyza", 68, 44, BLACK, 2, LIGHTGREY); //+5
+	ILI9341_Draw_Filled_Rectangle_Coord(20, 85, 300, 135, LIGHTGREY);
+	ILI9341_Draw_Text("Manualni generovani", 45, 100, BLACK, 2, LIGHTGREY);
+	//ILI9341_Draw_Filled_Rectangle_Coord(20, 141, 300, 191, LIGHTGREY);
+	//ILI9341_Draw_Text("Modifikace signalu", 48, 156, BLACK, 2, LIGHTGREY);
+	/*ILI9341_Draw_Filled_Rectangle_Coord(20, 172, 300, 212, LIGHTGREY);
+	ILI9341_Draw_Text("Manualni analyza", 22, 172, BLACK, 2, LIGHTGREY);
+	ILI9341_Draw_Filled_Rectangle_Coord(20, 218, 300, 258, LIGHTGREY);
+	ILI9341_Draw_Text("Manualni gen.", 38, 218, BLACK, 2, LIGHTGREY);*/
+	ILI9341_Draw_Text("2/2", 145, 220, BLACK, 2, DARKGREY);
+	Draw_NavigationBar_Left_Horizontal();
+}
+void Draw_NavigationBar_Left(void)
+{
+	ILI9341_Draw_Filled_Rectangle_Coord(0, 280, 50, 320, LIGHTGREY);
+	ILI9341_Draw_Text("<-", 20, 290, BLACK, 2, DARKGREY);
+}
+void Draw_NavigationBar_Right(void)
+{
+	ILI9341_Draw_Filled_Rectangle_Coord(190, 280, 240, 320, LIGHTGREY);
+	ILI9341_Draw_Text("->",210 , 290, BLACK, 2, DARKGREY);
+}
+void Draw_NavigationBar_Left_Horizontal(void)
+{
+	ILI9341_Draw_Filled_Rectangle_Coord(0, 205, 70, 240, LIGHTGREY);
+	ILI9341_Draw_Text("<-", 25, 214, BLACK, 2, DARKGREY);
+}
+void Draw_NavigationBar_Right_Horizontal(void)
+{
+	ILI9341_Draw_Filled_Rectangle_Coord(250, 205, 320, 240, LIGHTGREY);
+	ILI9341_Draw_Text("->",275 , 214, BLACK, 2, DARKGREY);
 }
 /* USER CODE END 4 */
 
