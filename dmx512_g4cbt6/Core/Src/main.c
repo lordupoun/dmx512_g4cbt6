@@ -163,13 +163,11 @@ int main(void)
   MX_GPIO_Init();
   MX_SPI1_Init();
   MX_SPI2_Init();
-  MX_TIM2_Init();
   MX_TIM4_Init();
   MX_USART1_UART_Init();
   MX_USART2_UART_Init();
   MX_TIM6_Init();
   MX_TIM7_Init();
-  MX_TIM17_Init();
   /* USER CODE BEGIN 2 */
   //ReceiveFrom_PC();
   //ReceiveFrom_DMX();
@@ -600,16 +598,7 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) //Po odeslání -- pokud
 }
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim) //Po doběhnutí časovače
 {
-	if(htim==&htim17)
-	{
-
-	}
-	else if(htim==&htim2)
-	{
-
-		//HAL_TIM_Base_Start_IT(&htim2); //Spustí časovač na odesílání signálu do PC
-	}
-	else if(htim==&htim6)
+	if(htim==&htim6)
 	{
 		//uint32_t i;
 		HAL_TIM_Base_Stop_IT(&htim6);
@@ -619,8 +608,11 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim) //Po doběhnutí ča
 		//while(i--);
 		SwitchPin_ToMode_UART();
 		HAL_UART_Transmit_IT(&huart2, sendToDMX, 513); //TODO: sizeof(receiveBuff)
+		if(receiveMode==3)
+		{
 		memcpy(&sendToPC[2], &receiveBuff[1], 513 * sizeof(uint8_t)); //kopírování
 		HAL_UART_Transmit_IT(&huart1, sendToPC, 520); //Odeslání do PC - samostatnej timer
+		}
 
 	}
 	else if(htim==&htim7)
@@ -683,7 +675,7 @@ void setTo_AnalyzeLocally() //Nevysílá data
 {
 	menuNav=5;
 	ReceiveFrom_DMX(); //Nastaví příjem z DMX
-	receiveMode=3;
+	receiveMode=4;
 	//SwitchToReceiveOnly(); //Rozpojí relé
 	//HAL_TIM_Base_Start_IT(&htim17);
 	sendingToDMX=1;
