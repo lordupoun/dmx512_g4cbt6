@@ -513,6 +513,7 @@ void SwitchToReceiveOnly()
 {
 	HAL_GPIO_WritePin(GPIOB, GPIO_PIN_15, GPIO_PIN_RESET);
 }
+//POZOR - tento callback se mozna nevykonava pokazde, potreba kontrola
 void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size) //Po prijmuti celeho paketu:
 {
 	//---------------------------Nastavit, že tohle je jen pro příjem z UART2; pro UART1 nastavit něco jinýho a svůj program doladit dle FreeStyleru (pokud ti to nepůjde, vykašli se na to a řeš příjem)
@@ -543,7 +544,7 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size) //Po p
 	}
 	//HAL_UARTEx_ReceiveToIdle_IT(uartRx, receiveBuff, toReceive);
 	HAL_UARTEx_ReceiveToIdle_IT(uartRx, receiveBuff, toReceive);
-	//memcpy(&sendToPC[2], &receiveBuff[1], 513 * sizeof(uint8_t)); //kopírování //tohle vyřešit
+
 	if(menuNav==5) //GUI if(menuNav==5)
 	{
 		if(valueOffset<495)
@@ -586,8 +587,8 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size) //Po p
 }
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) //Po odeslání -- pokud uart2 -> přepnout na IDLE; pokud uart 1 -> nic////////////////////////////////////////////////////
 {
-
-	if(huart==&huart2&&sendingToDMX==1)
+	//HAL_UARTEx_ReceiveToIdle_IT(uartRx, receiveBuff, 514);
+	if(huart==&huart2)
 	{
 		if(packetsSentAfterStart<10) //ošetřuje chybu kdy po prvním startu odešle signál ve stavu tak, že ho druhá deska nenajde -> odesílá prvních 10 paketů v blokovacím režimu; netýkalo se rozpojení a zapojení signálu
 		{
@@ -620,7 +621,6 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim) //Po doběhnutí ča
 	else if(htim==&htim2)
 	{
 
-		//HAL_TIM_Base_Start_IT(&htim2); //Spustí časovač na odesílání signálu do PC
 	}
 	else if(htim==&htim6)
 	{
@@ -633,7 +633,8 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim) //Po doběhnutí ča
 		SwitchPin_ToMode_UART();
 		HAL_UART_Transmit_IT(&huart2, sendToDMX, 513); //TODO: sizeof(receiveBuff)
 		memcpy(&sendToPC[2], &receiveBuff[1], 513 * sizeof(uint8_t)); //kopírování //tohle vyřešit
-		HAL_UART_Transmit_IT(&huart1, sendToPC, 520); //Odeslání do PC - samostatnej timer
+				HAL_UART_Transmit_IT(&huart1, sendToPC, 520); //Odeslání do PC - samostatnej timer
+
 		//receiveBuff[513]=50;
 
 	}
@@ -670,10 +671,9 @@ void setTo_Analyze()
 	receiveMode=3; //Nastaví odesílání přijatých dat doPC
 	//SwitchToReceiveOnly(); //Rozpojí relé
 	HAL_TIM_Base_Start_IT(&htim2); //Spustí časovač na odesílání signálu do PC
-	sendingToDMX=1;
 	HAL_UART_Transmit_IT(&huart1, sendToPC, 520); //Odeslání do PC - samostatnej timer
 	HAL_UART_Transmit_IT(&huart2, sendToDMX, 513); //Započne odesílání na DMX
-	HAL_TIM_Base_Start_IT(&htim17);
+	//HAL_TIM_Base_Start_IT(&htim17);
 	HAL_UARTEx_ReceiveToIdle_IT(uartRx, receiveBuff, toReceive); //Spustí přijímání z DMX
 }
 void setTo_GenerateOnPC()
@@ -700,9 +700,6 @@ void setTo_AnalyzeLocally() //Nevysílá data
 	receiveMode=4;
 	//SwitchToReceiveOnly(); //Rozpojí relé
 	HAL_TIM_Base_Start_IT(&htim17);
-	sendingToDMX=1;
-	HAL_UART_Transmit_IT(&huart2, sendToDMX, 513); //Započne odesílání na DMX
-	HAL_UARTEx_ReceiveToIdle_IT(uartRx, receiveBuff, toReceive); //Spustí přijímání z DMX
 	//HAL_UARTEx_ReceiveToIdle_IT(uartRx, receiveBuff, toReceive); //Započne přijímání na DMX++
 	//HAL_UARTEx_ReceiveToIdle_IT(uartRx, receiveBuff, toReceive); //Započne přijímání na DMX
 }
