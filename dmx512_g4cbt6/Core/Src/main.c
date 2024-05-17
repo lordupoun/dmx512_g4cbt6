@@ -59,20 +59,23 @@ void SystemClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-volatile uint8_t uartBuff1[514]; //receive
-volatile uint8_t uartBuff2[520]; //SendToPCAnalyze
-volatile uint8_t uartBuff3[513]; //SendToDMX
+volatile uint8_t receiveBuff[514]; //Paket přijatý z RS485/PC
+volatile uint8_t sendToPC[520]; //paket pro zpracování PC aplikací
+volatile uint8_t sendToDMX[513]; //standardní paket na RS485 rozhraní
 uint8_t packetsSentAfterStart=0; //přepsat na uint8_t
-int toReceive=514; //přepsat na uint8_t
-uint8_t modeSelected=1;
+int toReceive=514; //přepsat na uint16_t
+uint8_t receiveMode=1;
 UART_HandleTypeDef *uartRx; //výběr přijímacího uartu
-int menuNav;
+uint8_t menuNav;
+uint16_t valueOffset;
+char str[10];
+uint8_t sendingToDMX;
 
 //Displej:
-int xmin;
-int xmax;
-int ymin;
-int ymax;
+//int xmin;
+//int xmax;
+//int ymin;
+//int ymax;
 /* USER CODE END 0 */
 
 /**
@@ -85,57 +88,57 @@ int main(void)
   /* USER CODE BEGIN 1 */
 	for(int i=0;i<514;i++)
 		{
-			uartBuff1[i]=0;
+			receiveBuff[i]=0;
 		}
-	uartBuff1[0]=0;
-	uartBuff1[1]=0;
-	uartBuff1[2]=255;
-	uartBuff1[3]=255;
-	uartBuff1[4]=255;
-	uartBuff1[5]=255;
-	uartBuff1[506]=1;
-	uartBuff1[507]=2;
-	uartBuff1[508]=3;
-	uartBuff1[509]=4;
-	uartBuff1[510]=5;
-	uartBuff1[511]=255;
-	uartBuff1[512]=255;
+	receiveBuff[0]=0;
+	receiveBuff[1]=0;
+	receiveBuff[2]=255;
+	receiveBuff[3]=255;
+	receiveBuff[4]=255;
+	receiveBuff[5]=255;
+	receiveBuff[506]=1;
+	receiveBuff[507]=2;
+	receiveBuff[508]=3;
+	receiveBuff[509]=4;
+	receiveBuff[510]=5;
+	receiveBuff[511]=255;
+	receiveBuff[512]=255;
 
 	for(int i=0;i<515;i++)
 		{
-			uartBuff2[i]=0;
+			sendToPC[i]=0;
 		}
-	uartBuff2[0]=121;
-	uartBuff2[1]=122;
-	uartBuff2[2]=253;
-	uartBuff2[3]=254;
-	uartBuff2[4]=255;
-	uartBuff2[507]=1;
-	uartBuff2[508]=2;
-	uartBuff2[509]=3;
-	uartBuff2[510]=4;
-	uartBuff2[511]=5;
-	uartBuff2[512]=6;
-	uartBuff2[518]=131;
-	uartBuff2[519]=132;
+	sendToPC[0]=121;
+	sendToPC[1]=122;
+	sendToPC[2]=253;
+	sendToPC[3]=254;
+	sendToPC[4]=255;
+	sendToPC[507]=1;
+	sendToPC[508]=2;
+	sendToPC[509]=3;
+	sendToPC[510]=4;
+	sendToPC[511]=5;
+	sendToPC[512]=6;
+	sendToPC[518]=131;
+	sendToPC[519]=132;
 
 	for(int i=0;i<513;i++)
 		{
-			uartBuff3[i]=0;
+			sendToDMX[i]=0;
 		}
-	uartBuff3[0]=0;
-	uartBuff3[1]=255;
-	uartBuff3[2]=255;
-	uartBuff3[3]=0;
-	uartBuff3[4]=0;
-	uartBuff3[5]=0;
-	uartBuff3[506]=1;
-	uartBuff3[507]=2;
-	uartBuff3[508]=3;
-	uartBuff3[509]=4;
-	uartBuff3[510]=5;
-	uartBuff3[511]=255;
-	uartBuff3[512]=0;
+	sendToDMX[0]=0;
+	sendToDMX[1]=255;
+	sendToDMX[2]=255;
+	sendToDMX[3]=0;
+	sendToDMX[4]=0;
+	sendToDMX[5]=0;
+	sendToDMX[506]=1;
+	sendToDMX[507]=2;
+	sendToDMX[508]=3;
+	sendToDMX[509]=4;
+	sendToDMX[510]=5;
+	sendToDMX[511]=255;
+	sendToDMX[512]=0;
 
 
   /* USER CODE END 1 */
@@ -169,14 +172,15 @@ int main(void)
   MX_TIM17_Init();
   /* USER CODE BEGIN 2 */
   //ReceiveFrom_PC();
-  ReceiveFrom_DMX();
+  //ReceiveFrom_DMX();
   ILI9341_Init();
-  SwitchToTransmit(); //TODO: přepínatelnej režim - vysílám/nevysílám, ale to až budu mít hotovou komunikaci s PC asi...; Případně vypnutí přijímání a vysílání úplně
-  HAL_TIM_Base_Start_IT(&htim2);
-  HAL_UART_Transmit_IT(&huart2, uartBuff3, 513);
-  HAL_UARTEx_ReceiveToIdle_IT(uartRx, uartBuff1, toReceive); //Začne přijímání DMX512
-  HAL_UARTEx_ReceiveToIdle_IT(uartRx, uartBuff1, toReceive); //TODO: Při čtení cizího DMX signálu nepřečte první nultej byt a tím pádem nedopíše poslední byte z DMXka, na starým to fungovalo, je to chyba HALu asi
+  //SwitchToTransmit(); //TODO: přepínatelnej režim - vysílám/nevysílám, ale to až budu mít hotovou komunikaci s PC asi...; Případně vypnutí přijímání a vysílání úplně
+  //HAL_TIM_Base_Start_IT(&htim2);
+  //HAL_UART_Transmit_IT(&huart2, sendToDMX, 513);
+  uartRx = &huart2;
   uint16_t position_array[2];
+  stopAll();
+  uartRx = &huart2;
   //Displejos: //TODO: Tlačítko pro ukončení přijímání (ostatní tlačítka jej zase zapnou (funkce ReceiveFrom_PC bude zapínat)). //Menu: Analyzátor DMX - Přijímač Only (přijíma z DMX); Generátor DMX - Vysílač Only (vysílá z PC); Modifikátor DMX - Přijímač a Vysílač - rele on (přijímá z DMX a PC); Přijímat z PC, Přijímat z DMX; Manuální ovládání - Barvy; Pod menu analýza manuální na zařízení
 
   /*ILI9341_Draw_Text("Test DMX512", 10, 10, BLACK, 2, WHITE);
@@ -188,7 +192,9 @@ int main(void)
  	ILI9341_Draw_Filled_Rectangle_Coord(160, 220, 220, 280, DARKGREY);*/
   Draw_MainMenu1_Horizontal();
   menuNav=1;
-  //Draw_NavigationBar_Right_Horizontal();
+	HAL_UARTEx_ReceiveToIdle_IT(uartRx, receiveBuff, toReceive); //Spustí přijímání z DMX SMAZAT-----------------
+	HAL_UARTEx_ReceiveToIdle_IT(uartRx, receiveBuff, toReceive);
+	HAL_TIM_Base_Start_IT(&htim2); //Spustí časovač na odesílání signálu do PC
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -218,51 +224,70 @@ while (1)
 				menuNav=3;
 				ILI9341_Fill_Screen(DARKGREY);
 				Draw_NavigationBar_Left_Horizontal();
-				ILI9341_Draw_Text("Analyza signalu", 0, 0, BLACK, 2, DARKGREY);
+				ILI9341_Draw_Text("Analyza signalu", 3, 1, BLACK, 2, DARKGREY);
+				ILI9341_Draw_Text("Rezim analyzy je zapnuty,", 5, 60, BLACK, 2, RED);
+				ILI9341_Draw_Text("Pokracujte v PC aplikaci", 5, 85, BLACK, 2, RED);
+				setTo_Analyze();
 			}
 			if(x_pos>20&&y_pos>85&&x_pos<300&&y_pos<135&&menuNav==1)
 			{
 				menuNav=3;
 				ILI9341_Fill_Screen(DARKGREY);
 				Draw_NavigationBar_Left_Horizontal();
-				ILI9341_Draw_Text("Generovani signalu", 0, 0, BLACK, 2, DARKGREY);
+				ILI9341_Draw_Text("Generovani signalu", 3, 1, BLACK, 2, DARKGREY);
+				ILI9341_Draw_Text("Rezim generovani", 5, 60, BLACK, 2, RED);
+				ILI9341_Draw_Text("je zapnuty,", 5, 80, BLACK, 2, RED);
+				ILI9341_Draw_Text("Pokracujte v PC aplikaci", 5, 105, BLACK, 2, RED);
+				setTo_GenerateOnPC();
 			}
 			if(x_pos>20&&y_pos>141&&x_pos<300&&y_pos<191&&menuNav==1)
 			{
 				menuNav=3;
 				ILI9341_Fill_Screen(DARKGREY);
 				Draw_NavigationBar_Left_Horizontal();
-				ILI9341_Draw_Text("Modifikace signalu", 0, 0, BLACK, 2, DARKGREY);
-;			}
+				ILI9341_Draw_Text("Modifikace signalu", 3, 1, BLACK, 2, DARKGREY);
+				ILI9341_Draw_Text("Rezim modifikace", 5, 60, BLACK, 2, RED);
+				ILI9341_Draw_Text("je zapnuty,", 5, 80, BLACK, 2, RED);
+				ILI9341_Draw_Text("PC aplikace", 5, 105, BLACK, 2, RED);
+				ILI9341_Draw_Text("jej zatim nepodporuje", 5, 125, BLACK, 2, RED);
+				setTo_Modification();
+			}
 			if(x_pos>20&&y_pos>29&&x_pos<300&&y_pos<79&&menuNav==2) //Manualni ovladani page1
 			{
-				//x_pos=0;
-				//y_pos=0;
-				menuNav=5;
-				ILI9341_Fill_Screen(DARKGREY);
+				valueOffset=0;
+				ILI9341_Fill_Screen(LIGHTGREY);
 				Draw_NavigationBar_Left_Horizontal();
-				ILI9341_Draw_Text("Manualni analyza", 0, 0, BLACK, 2, DARKGREY);
+				ILI9341_Draw_Text("Manualni analyza", 3, 1, BLACK, 2, LIGHTGREY);
 				Draw_NavigationBar_Right_Horizontal();
-				ILI9341_Draw_Text("1/2", 145, 220, BLACK, 2, DARKGREY);
-				char textToDisplay[10];
-				char charFromByte = (char)uartBuff3[1];
-				snprintf(textToDisplay, sizeof(textToDisplay), uartBuff3[1]);
-				//for(int a=0;a<20;a+=4)
-				/*//{
-int a=0;
-						ILI9341_Draw_Text(1+a+":"+uartBuff3[1+a], 10, 20+(a*2), BLACK, 2, DARKGREY);
-						ILI9341_Draw_Text(2+a+":"+uartBuff3[2+a], 10, 50+(a*2), BLACK, 2, DARKGREY);
-						ILI9341_Draw_Text(3+a+":"+uartBuff3[3+a], 10, 80+(a*2), BLACK, 2, DARKGREY);
-						ILI9341_Draw_Text(4+a+":"+uartBuff3[4+a], 10, 110+(a*2), BLACK, 2, DARKGREY);
-
-				//}*/
-				ILI9341_Draw_Text(textToDisplay, 10, 20, BLACK, 2, DARKGREY);
+				char page[7];
+				sprintf(page, " %d/29 ", valueOffset+1);
+				ILI9341_Draw_Text(page, 136, 220, BLACK, 2, LIGHTGREY);
+				setTo_AnalyzeLocally();
+				menuNav=5;
+				HAL_UARTEx_ReceiveToIdle_IT(uartRx, receiveBuff, toReceive);
+				HAL_UARTEx_ReceiveToIdle_IT(uartRx, receiveBuff, toReceive);
 			}
 			if(x_pos>250&&y_pos>205&&x_pos<320&&y_pos<240&&menuNav==5) //Manualni ovladani page2
 			{
-				menuNav=6;
-				ILI9341_Draw_Text("2/2", 145, 220, BLACK, 2, DARKGREY);
-
+				if(valueOffset<495)
+				{
+					valueOffset+=18;
+					char page[7];
+					sprintf(page, " %d/29 ", valueOffset/18+1);
+					ILI9341_Draw_Text(page, 133, 220, BLACK, 2, LIGHTGREY);
+					HAL_Delay(50);
+				}
+				else
+				{
+					ILI9341_Fill_Screen(LIGHTGREY);
+					Draw_NavigationBar_Left_Horizontal();
+					ILI9341_Draw_Text("Manualni analyza", 3, 1, BLACK, 2, LIGHTGREY);
+					Draw_NavigationBar_Right_Horizontal();
+					char page[7];
+					sprintf(page, " %d/29 ", valueOffset/18+1);
+					ILI9341_Draw_Text(page, 133, 220, BLACK, 2, LIGHTGREY);
+					HAL_Delay(50);
+				}
 			}
 			if(x_pos>20&&y_pos>85&&x_pos<300&&y_pos<135&&menuNav==2)
 			{
@@ -270,26 +295,36 @@ int a=0;
 				ILI9341_Fill_Screen(DARKGREY);
 				Draw_NavigationBar_Left_Horizontal();
 				ILI9341_Draw_Text("Manualni generovani", 0, 0, BLACK, 2, DARKGREY);
+				setTo_GenerateLocally();
 			}
-			if(x_pos>0&&y_pos>205&&x_pos<70&&y_pos<240&&menuNav==3) //Zpátky SUB menu page1
+			if(x_pos>0&&y_pos>205&&x_pos<70&&y_pos<240&&menuNav==3) //Zpátky do page1 menu z podmenu
 			{
 				menuNav=1;
 				Draw_MainMenu1_Horizontal();
+				stopAll();
 			}
-			if(x_pos>0&&y_pos>205&&x_pos<70&&y_pos<240&&menuNav==4) //Zpátky do SUB menu page2
+			if(x_pos>0&&y_pos>205&&x_pos<70&&y_pos<240&&menuNav==4) //Zpátky do page2 menu z podmenu
 			{
 				menuNav=2;
 				Draw_MainMenu2_Horizontal();
+				stopAll();
 			}
 			if(x_pos>0&&y_pos>205&&x_pos<70&&y_pos<240&&menuNav==5) //Zpátky SUB menu
 			{
-				menuNav=2;
-				Draw_MainMenu2_Horizontal();
-			}
-			if(x_pos>0&&y_pos>205&&x_pos<70&&y_pos<240&&menuNav>5) //Zpátky SUB menu
-			{
-				menuNav-=1;
-				Draw_MainMenu2_Horizontal(); //Dodělat
+				if(valueOffset==0)
+				{
+					menuNav=2;
+					Draw_MainMenu2_Horizontal();
+					stopAll();
+				}
+				else
+				{
+					valueOffset-=18;
+					char page[7];
+					sprintf(page, " %d/28 ", valueOffset/18+1);
+					ILI9341_Draw_Text(page, 133, 220, BLACK, 2, LIGHTGREY);
+					HAL_Delay(50);
+				}
 			}
 			/*menuNav=1;
 			ILI9341_Set_Rotation(SCREEN_HORIZONTAL_2);
@@ -309,10 +344,10 @@ int a=0;
 			Draw_NavigationBar_Right_Horizontal();*/
 			 /* if(x_pos>20&&x_pos<80&&y_pos>60&&y_pos<120)
 			  {
-				  uartBuff3[2]=255;
-				  uartBuff3[3]=0;
-				  uartBuff3[4]=0;
-				  uartBuff3[5]=0;
+				  sendToDMX[2]=255;
+				  sendToDMX[3]=0;
+				  sendToDMX[4]=0;
+				  sendToDMX[5]=0;
 				  ILI9341_Draw_Hollow_Rectangle_Coord(18, 58, 82, 122, WHITE);
 				  xmin=18;
 				  xmax=82;
@@ -323,10 +358,10 @@ int a=0;
 			  }
 			  if(x_pos>20&&x_pos<80&&y_pos>140&&y_pos<200)
 			  {
-				  uartBuff3[2]=0;
-				  uartBuff3[3]=255;
-				  uartBuff3[4]=0;
-				  uartBuff3[5]=0;
+				  sendToDMX[2]=0;
+				  sendToDMX[3]=255;
+				  sendToDMX[4]=0;
+				  sendToDMX[5]=0;
 				  ILI9341_Draw_Hollow_Rectangle_Coord(18, 138, 82, 202, WHITE);
 				  xmin=18;
 				  xmax=82;
@@ -336,10 +371,10 @@ int a=0;
 			  }
 			  if(x_pos>20&&x_pos<80&&y_pos>220&&y_pos<280)
 			  {
-				  uartBuff3[2]=0;
-				  uartBuff3[3]=0;
-				  uartBuff3[4]=255;
-				  uartBuff3[5]=0;
+				  sendToDMX[2]=0;
+				  sendToDMX[3]=0;
+				  sendToDMX[4]=255;
+				  sendToDMX[5]=0;
 				  ILI9341_Draw_Hollow_Rectangle_Coord(18, 218, 82, 282, WHITE);
 				  xmin=18;
 				  xmax=82;
@@ -349,10 +384,10 @@ int a=0;
 			  }
 			  if(x_pos>160&&x_pos<220&&y_pos>60&&y_pos<120)
 			  {
-				  uartBuff3[2]=255;
-				  uartBuff3[3]=0;
-				  uartBuff3[4]=0;
-				  uartBuff3[5]=255;
+				  sendToDMX[2]=255;
+				  sendToDMX[3]=0;
+				  sendToDMX[4]=0;
+				  sendToDMX[5]=255;
 				  ILI9341_Draw_Hollow_Rectangle_Coord(158, 58, 222, 122, WHITE);
 				  xmin=158;
 				  xmax=222;
@@ -481,72 +516,86 @@ void SwitchToReceiveOnly()
 void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size) //Po prijmuti celeho paketu:
 {
 	//---------------------------Nastavit, že tohle je jen pro příjem z UART2; pro UART1 nastavit něco jinýho a svůj program doladit dle FreeStyleru (pokud ti to nepůjde, vykašli se na to a řeš příjem)
-	if(modeSelected==1) //PC
+	//Ukladani dat pro vysilani na DMX512 na zaklade toho, odkud byly prijate
+	if(receiveMode==1) //Z PC do DMX
 	{
-		memcpy(uartBuff3, uartBuff1, 513 * sizeof(uint8_t));
+		memcpy(sendToDMX, receiveBuff, 513 * sizeof(uint8_t)); //TODO: Vymyslet možnost bez kopírování (změna buffu přímo v čtecích příkazech, pointerem); bylo by využitelné pouze pro tuto funkci -> tudíž to nemá smysl (asi by to nebylo přehlednější)
+		HAL_UARTEx_ReceiveToIdle_IT(uartRx, receiveBuff, toReceive);
 	}
-	else //DMX
+	else if(receiveMode==2)//receiveMode==2 //Z DMX do DMX
 	{
-		for(int i=0; i<513; i++) //Pro UART2 příjem (vyzkoušet pak s jinejma pultama) //zkontrolovat ten poslední byte.... //vymyslet bezposunovou variantu. - přehodit nad Receive
+		/*for(int i=0; i<513; i++) //Pro UART2 příjem (vyzkoušet pak s jinejma pultama) //zkontrolovat ten poslední byte.... //vymyslet bezposunovou variantu. - přehodit nad Receive
 		{
-			uartBuff3[i]=uartBuff1[i+1]; //+1 pro uart2 TODO:memcpy(&a1[50], &a2[50], 10 * sizeof a[0]);
+			sendToDMX[i]=receiveBuff[i+1]; //+1 pro uart2 TODO:memcpy(&a1[50], &a2[50], 10 * sizeof a[0]);
+		}*/
+		memcpy(&sendToDMX[0], &receiveBuff[1], 513 * sizeof(uint8_t));
+		HAL_UARTEx_ReceiveToIdle_IT(uartRx, receiveBuff, toReceive);
+	}
+	else if(receiveMode==3)//Z DMX do PC
+	{
+		memcpy(&sendToPC[2], &receiveBuff[1], 513 * sizeof(uint8_t)); //kopírování //tohle vyřešit
+		HAL_UARTEx_ReceiveToIdle_IT(uartRx, receiveBuff, toReceive);
+	}
+	else if(receiveMode==4)//Z DMX pouze do Buffu
+	{
+		//memcpy(&sendToPC[2], &receiveBuff[1], 513 * sizeof(uint8_t)); //kopírování //tohle vyřešit
+		HAL_UARTEx_ReceiveToIdle_IT(uartRx, receiveBuff, toReceive);
+	}
+	//ILI9341_Draw_Text("TEEEEST", 5, 80, BLACK, 2, RED); ------------------------ Zkus vrátit odesílání do PC na původní pozici
+	HAL_UARTEx_ReceiveToIdle_IT(uartRx, receiveBuff, toReceive);
+
+	if(menuNav==5) //GUI
+	{
+		if(valueOffset<495)
+		{
+
+			for(int a=0;a<16;a+=3)
+			{
+				sprintf(str, "%d:%d  ", valueOffset+1+a, receiveBuff[valueOffset+2+a]);
+				ILI9341_Draw_Text(str, 5, 20+(a*10), BLACK, 2, LIGHTGREY);
+				sprintf(str, "%d:%d  ", valueOffset+2+a, receiveBuff[valueOffset+3+a]);
+				ILI9341_Draw_Text(str, 120, 20+(a*10), BLACK, 2, LIGHTGREY);
+				sprintf(str, "%d:%d  ", valueOffset+3+a, receiveBuff[valueOffset+4+a]);
+				ILI9341_Draw_Text(str, 230, 20+(a*10), BLACK, 2, LIGHTGREY);
+			}
+		}
+		else
+		{
+			for(int a=0;a<6;a+=3)
+			{
+				sprintf(str, "%d:%d  ", valueOffset+1+a, receiveBuff[valueOffset+2+a]);
+				ILI9341_Draw_Text(str, 5, 20+(a*10), BLACK, 2, LIGHTGREY);
+				sprintf(str, "%d:%d  ", valueOffset+2+a, receiveBuff[valueOffset+3+a]);
+				ILI9341_Draw_Text(str, 120, 20+(a*10), BLACK, 2, LIGHTGREY);
+				sprintf(str, "%d:%d  ", valueOffset+3+a, receiveBuff[valueOffset+4+a]);
+				ILI9341_Draw_Text(str, 230, 20+(a*10), BLACK, 2, LIGHTGREY);
+			}
+			sprintf(str, "%d:%d  ", 511, receiveBuff[512]);
+			ILI9341_Draw_Text(str, 5, 20+(6*10), BLACK, 2, LIGHTGREY);
+			sprintf(str, "%d:%d  ", 512, receiveBuff[513]);
+			ILI9341_Draw_Text(str, 120, 20+(6*10), BLACK, 2, LIGHTGREY);
+			ILI9341_Draw_Text("       ", 230, 20+(6*10), BLACK, 2, LIGHTGREY);
+			for(int a=9;a<16;a+=3)
+			{
+				ILI9341_Draw_Text("       ", 5, 20+(a*10), BLACK, 2, LIGHTGREY);
+				ILI9341_Draw_Text("       ", 120, 20+(a*10), BLACK, 2, LIGHTGREY);
+				ILI9341_Draw_Text("       ", 230, 20+(a*10), BLACK, 2, LIGHTGREY);
+			}
 		}
 	}
-	HAL_UARTEx_ReceiveToIdle_IT(uartRx, uartBuff1, toReceive);
 }
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim) //Po doběhnutí časovače
-{
-	if(htim==&htim2)
-	{
-
-	}
-	else if(htim==&htim6)
-	{
-		//uint32_t i;
-		HAL_TIM_Base_Stop_IT(&htim6);
-		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2,GPIO_PIN_SET);
-		//Zde se vytváří MAB samo
-		//i=500000; //Přidat Timer na MAB, lze ji prodloužit dalším časovačem, ale přepnutí chvilku na UART chvíli trvá
-		//while(i--);
-		SwitchPin_ToMode_UART();
-		HAL_UART_Transmit_IT(&huart2, uartBuff3, 513); //TODO: sizeof(uartBuff1) //Přidat jako samostatnou funkci která by odesílala podle toho co jí dám, to bych musel hrozně zaifovat každý kolo
-
-		memcpy(&uartBuff2[2], &uartBuff3[0], 513 * sizeof(uint8_t)); //kopírování jen pro to, co se zrovna používá! (v editačním režimu všechno...)
-		HAL_UART_Transmit_IT(&huart1, uartBuff2, 520);
-		uartBuff1[513]=50;
-
-	}
-	else if(htim==&htim7)
-	{
-		HAL_TIM_Base_Stop_IT(&htim7);
-		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2,GPIO_PIN_RESET);
-		HAL_TIM_Base_Start_IT(&htim6);
-	}
-	else if(htim==&htim17)
-	{
-		HAL_TIM_Base_Stop_IT(&htim17);
-		ILI9341_Draw_Hollow_Rectangle_Coord(xmin, ymin, xmax, ymax, BLACK);
-	}
-}
-//Lze prodloužit reset i MTBF, ale cílem je nechat to co nejkratší tak, aby se nemršil vysílanej signál -> pokud bude chodit hodně rychlej signál a do PC bude chodit s dalšíma 6 bytama navíc, dostane se ven moc pozdě - to se ale při upravování dostane tak i tak, protože ta naše potvora vysílá rychlostí ničeho... lepší by bylo odesílat jen pakety co se mají měnit; poslední možnost je úplně přepsat komunikaci s počítačem, kdy se už nebude komunikovat po DMX512 ale vlastním protokolem
-//1 Dodělat analýzu
-//2 Dodělat SW
-//3 Build SW
-//Zkusit vymyslet algoritmus pro kontrolu časování
-//4 Dopsat práci
-//5 Pak řešit modifikace zpráv
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) //Po odeslání -- pokud uart2 -> přepnout na IDLE; pokud uart 1 -> nic////////////////////////////////////////////////////
 {
-	if(huart==&huart2)
+	if(huart==&huart2&&sendingToDMX==1)
 	{
-		if(packetsSentAfterStart<10) //ošetřuje chybu kdy po prvním startu odešle signál ve stavu tak, že ho druhá deska nenajde -> odesílá prvních 10 paketů v blokovacím režimu
+		if(packetsSentAfterStart<10) //ošetřuje chybu kdy po prvním startu odešle signál ve stavu tak, že ho druhá deska nenajde -> odesílá prvních 10 paketů v blokovacím režimu; netýkalo se rozpojení a zapojení signálu
 		{
 			SwitchPin_ToMode_GPIO_Output();
 			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2,GPIO_PIN_SET);
 			uint32_t i;
 			i=1000;
 			while(i--); //MTBF - v blokovacím režimu
-			HAL_UARTEx_ReceiveToIdle_IT(uartRx, uartBuff1, toReceive); //Aby se přijímal sinál i se spuštěním zařízení a po zapojení kabelu
+			HAL_UARTEx_ReceiveToIdle_IT(uartRx, receiveBuff, toReceive); //Aby se přijímal sinál i se spuštěním zařízení a po zapojení kabelu
 			//HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2,GPIO_PIN_SET);
 			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2,GPIO_PIN_RESET);
 			HAL_TIM_Base_Start_IT(&htim6);
@@ -557,20 +606,110 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) //Po odeslání -- pokud
 			SwitchPin_ToMode_GPIO_Output();
 			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2,GPIO_PIN_SET); //Tvoří MTBF
 			HAL_TIM_Base_Start_IT(&htim7);
-			HAL_UARTEx_ReceiveToIdle_IT(uartRx, uartBuff1, 514); //Aby se přijímal sinál i se spuštěním zařízení a po zapojení kabelu
+			HAL_UARTEx_ReceiveToIdle_IT(uartRx, receiveBuff, 514); //Aby se přijímal sinál i se spuštěním zařízení a po zapojení kabelu
 		}
 	}
 }
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim) //Po doběhnutí časovače
+{
+	if(htim==&htim2)
+	{
+		HAL_UART_Transmit_IT(&huart1, sendToPC, 520); //Odeslání do PC - samostatnej timer
+		//ILI9341_Draw_Text("je zapnuty,", 5, 80, BLACK, 2, RED);
+	}
+	else if(htim==&htim6)
+	{
+		//uint32_t i;
+		HAL_TIM_Base_Stop_IT(&htim6);
+		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2,GPIO_PIN_SET);
+		//Zde se vytváří MAB samo
+		//i=500000; //Přidat Timer na MAB, lze ji prodloužit dalším časovačem, ale přepnutí chvilku na UART chvíli trvá
+		//while(i--);
+		SwitchPin_ToMode_UART();
+		HAL_UART_Transmit_IT(&huart2, sendToDMX, 513); //TODO: sizeof(receiveBuff)
+		//receiveBuff[513]=50;
+
+	}
+	else if(htim==&htim7)
+	{
+		HAL_TIM_Base_Stop_IT(&htim7);
+		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2,GPIO_PIN_RESET);
+		HAL_TIM_Base_Start_IT(&htim6);
+	}
+	else if(htim==&htim17)
+	{
+		HAL_UARTEx_ReceiveToIdle_IT(uartRx, receiveBuff, toReceive);
+	}
+}
+//Lze prodloužit reset i MTBF, ale cílem je nechat to co nejkratší tak, aby se nemršil vysílanej signál -> pokud bude chodit hodně rychlej signál a do PC bude chodit s dalšíma 6 bytama navíc, dostane se ven moc pozdě - to se ale při upravování dostane tak i tak, protože ta naše potvora vysílá rychlostí ničeho... lepší by bylo odesílat jen pakety co se mají měnit; poslední možnost je úplně přepsat komunikaci s počítačem, kdy se už nebude komunikovat po DMX512 ale vlastním protokolem
+//1 Dodělat analýzu
+//2 Dodělat SW
+//3 Build SW
+//Zkusit vymyslet algoritmus pro kontrolu časování
+//4 Dopsat práci
+//5 Pak řešit modifikace zpráv
+
 void ReceiveFrom_PC() {
     uartRx = &huart1;
-    modeSelected=1;
+    //receiveMode=1;
     toReceive=513;
 }
 void ReceiveFrom_DMX() {
     uartRx = &huart2;
-    modeSelected=2;
+    //receiveMode=2;
     toReceive=514;
 }
+
+void setTo_Analyze()
+{
+	ReceiveFrom_DMX(); //Nastaví příjem z DMX
+	receiveMode=3; //Nastaví odesílání přijatých dat doPC
+	//SwitchToReceiveOnly(); //Rozpojí relé
+	HAL_UARTEx_ReceiveToIdle_IT(uartRx, receiveBuff, toReceive); //Spustí přijímání z DMX
+	HAL_TIM_Base_Start_IT(&htim17);
+	HAL_TIM_Base_Start_IT(&htim2); //Spustí časovač na odesílání signálu do PC
+}
+void setTo_GenerateOnPC()
+{
+	ReceiveFrom_PC(); //Nastaví příjem z PC
+	SwitchToTransmit(); //Propojí relé
+	sendingToDMX=1; //Povolí odesílání na DMX
+	receiveMode=1; // Nastaví přijímání dat z PC a odesílání do DMX
+	HAL_UARTEx_ReceiveToIdle_IT(uartRx, receiveBuff, toReceive); //Započne přijímání z PC
+	HAL_UART_Transmit_IT(&huart2, sendToDMX, 513); //Započne odesílání na DMX
+}
+void setTo_Modification()
+{
+	/*ReceiveFrom_PC(); //Nastaví příjem z PC
+	SwitchToTransmit(); //Propojí relé
+	sendingToDMX=1; //Povolí odesílání na DMX
+	receiveMode=1; // Nastaví přijímání dat z PC a odesílání do DMX
+	HAL_UARTEx_ReceiveToIdle_IT(uartRx, receiveBuff, toReceive); //Započne odesílání na DMX*/
+}
+void setTo_AnalyzeLocally() //Nevysílá data
+{
+	ReceiveFrom_DMX(); //Nastaví příjem z DMX
+	receiveMode=4;
+	//SwitchToReceiveOnly(); //Rozpojí relé
+	HAL_UARTEx_ReceiveToIdle_IT(uartRx, receiveBuff, toReceive); //Započne přijímání na DMX
+	//HAL_UARTEx_ReceiveToIdle_IT(uartRx, receiveBuff, toReceive); //Započne přijímání na DMX
+	HAL_TIM_Base_Start_IT(&htim17);
+}
+void setTo_GenerateLocally() //Nepřijímá data
+{
+	SwitchToTransmit(); //Propojí relé
+	sendingToDMX=1; //Povolí odesílání na DMX
+	HAL_UART_Transmit_IT(&huart2, sendToDMX, 513); //Započne odesílání na DMX
+}
+void stopAll()
+{
+	HAL_TIM_Base_Stop_IT(&htim2); //Zastaví odesílání do PC
+	sendingToDMX=0; //Ukončí odesílání na DMX
+	//receiveMode=5; //Ukončí příjem dat
+	SwitchToReceiveOnly(); //Rozpojí relé
+	packetsSentAfterStart=0; //Snuluje bugfix
+}
+
 void SwitchPin_ToMode_GPIO_Output(void) //TODO: přidat nastaveni PINu k prepnuti
 {
     GPIO_InitTypeDef GPIO_Initialize;
@@ -617,10 +756,6 @@ void Draw_MainMenu1_Horizontal(void)
 	ILI9341_Draw_Text("Generovani signalu", 48, 100, BLACK, 2, LIGHTGREY);
 	ILI9341_Draw_Filled_Rectangle_Coord(20, 141, 300, 191, LIGHTGREY);
 	ILI9341_Draw_Text("Modifikace signalu", 48, 156, BLACK, 2, LIGHTGREY);
-	/*ILI9341_Draw_Filled_Rectangle_Coord(20, 172, 300, 212, LIGHTGREY);
-	ILI9341_Draw_Text("Manualni analyza", 22, 172, BLACK, 2, LIGHTGREY);
-	ILI9341_Draw_Filled_Rectangle_Coord(20, 218, 300, 258, LIGHTGREY);
-	ILI9341_Draw_Text("Manualni gen.", 38, 218, BLACK, 2, LIGHTGREY);*/
 	ILI9341_Draw_Text("1/2", 145, 220, BLACK, 2, DARKGREY);
 	Draw_NavigationBar_Right_Horizontal();
 }
@@ -634,12 +769,6 @@ void Draw_MainMenu2_Horizontal(void)
 	ILI9341_Draw_Text("Manualni analyza", 68, 44, BLACK, 2, LIGHTGREY); //+5
 	ILI9341_Draw_Filled_Rectangle_Coord(20, 85, 300, 135, LIGHTGREY);
 	ILI9341_Draw_Text("Manualni generovani", 45, 100, BLACK, 2, LIGHTGREY);
-	//ILI9341_Draw_Filled_Rectangle_Coord(20, 141, 300, 191, LIGHTGREY);
-	//ILI9341_Draw_Text("Modifikace signalu", 48, 156, BLACK, 2, LIGHTGREY);
-	/*ILI9341_Draw_Filled_Rectangle_Coord(20, 172, 300, 212, LIGHTGREY);
-	ILI9341_Draw_Text("Manualni analyza", 22, 172, BLACK, 2, LIGHTGREY);
-	ILI9341_Draw_Filled_Rectangle_Coord(20, 218, 300, 258, LIGHTGREY);
-	ILI9341_Draw_Text("Manualni gen.", 38, 218, BLACK, 2, LIGHTGREY);*/
 	ILI9341_Draw_Text("2/2", 145, 220, BLACK, 2, DARKGREY);
 	Draw_NavigationBar_Left_Horizontal();
 }
