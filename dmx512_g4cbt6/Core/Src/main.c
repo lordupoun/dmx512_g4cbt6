@@ -177,10 +177,9 @@ int main(void)
   //SwitchToTransmit(); //TODO: přepínatelnej režim - vysílám/nevysílám, ale to až budu mít hotovou komunikaci s PC asi...; Případně vypnutí přijímání a vysílání úplně
   //HAL_TIM_Base_Start_IT(&htim2);
   //HAL_UART_Transmit_IT(&huart2, sendToDMX, 513);
-  uartRx = &huart2;
-  uint16_t position_array[2];
   stopAll();
   uartRx = &huart2;
+  uint16_t position_array[2];
   //Displejos: //TODO: Tlačítko pro ukončení přijímání (ostatní tlačítka jej zase zapnou (funkce ReceiveFrom_PC bude zapínat)). //Menu: Analyzátor DMX - Přijímač Only (přijíma z DMX); Generátor DMX - Vysílač Only (vysílá z PC); Modifikátor DMX - Přijímač a Vysílač - rele on (přijímá z DMX a PC); Přijímat z PC, Přijímat z DMX; Manuální ovládání - Barvy; Pod menu analýza manuální na zařízení
 
   /*ILI9341_Draw_Text("Test DMX512", 10, 10, BLACK, 2, WHITE);
@@ -192,9 +191,6 @@ int main(void)
  	ILI9341_Draw_Filled_Rectangle_Coord(160, 220, 220, 280, DARKGREY);*/
   Draw_MainMenu1_Horizontal();
   menuNav=1;
-	HAL_UARTEx_ReceiveToIdle_IT(uartRx, receiveBuff, toReceive); //Spustí přijímání z DMX SMAZAT-----------------
-	HAL_UARTEx_ReceiveToIdle_IT(uartRx, receiveBuff, toReceive);
-	HAL_TIM_Base_Start_IT(&htim2); //Spustí časovač na odesílání signálu do PC
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -262,10 +258,8 @@ while (1)
 				char page[7];
 				sprintf(page, " %d/29 ", valueOffset+1);
 				ILI9341_Draw_Text(page, 136, 220, BLACK, 2, LIGHTGREY);
-				setTo_AnalyzeLocally();
 				menuNav=5;
-				HAL_UARTEx_ReceiveToIdle_IT(uartRx, receiveBuff, toReceive);
-				HAL_UARTEx_ReceiveToIdle_IT(uartRx, receiveBuff, toReceive);
+				setTo_AnalyzeLocally();
 			}
 			if(x_pos>250&&y_pos>205&&x_pos<320&&y_pos<240&&menuNav==5) //Manualni ovladani page2
 			{
@@ -315,7 +309,6 @@ while (1)
 				{
 					menuNav=2;
 					Draw_MainMenu2_Horizontal();
-					stopAll();
 				}
 				else
 				{
@@ -541,10 +534,10 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size) //Po p
 		//memcpy(&sendToPC[2], &receiveBuff[1], 513 * sizeof(uint8_t)); //kopírování //tohle vyřešit
 		HAL_UARTEx_ReceiveToIdle_IT(uartRx, receiveBuff, toReceive);
 	}
-	//ILI9341_Draw_Text("TEEEEST", 5, 80, BLACK, 2, RED); ------------------------ Zkus vrátit odesílání do PC na původní pozici
 	HAL_UARTEx_ReceiveToIdle_IT(uartRx, receiveBuff, toReceive);
 
-	if(menuNav==5) //GUI
+
+	if(0==0) //GUI if(menuNav==5)
 	{
 		if(valueOffset<495)
 		{
@@ -614,8 +607,9 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim) //Po doběhnutí ča
 {
 	if(htim==&htim2)
 	{
+		memcpy(&sendToPC[2], &receiveBuff[1], 513 * sizeof(uint8_t)); //kopírování //tohle vyřešit
 		HAL_UART_Transmit_IT(&huart1, sendToPC, 520); //Odeslání do PC - samostatnej timer
-		//ILI9341_Draw_Text("je zapnuty,", 5, 80, BLACK, 2, RED);
+		HAL_TIM_Base_Start_IT(&htim2); //Spustí časovač na odesílání signálu do PC
 	}
 	else if(htim==&htim6)
 	{
@@ -635,10 +629,6 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim) //Po doběhnutí ča
 		HAL_TIM_Base_Stop_IT(&htim7);
 		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2,GPIO_PIN_RESET);
 		HAL_TIM_Base_Start_IT(&htim6);
-	}
-	else if(htim==&htim17)
-	{
-		HAL_UARTEx_ReceiveToIdle_IT(uartRx, receiveBuff, toReceive);
 	}
 }
 //Lze prodloužit reset i MTBF, ale cílem je nechat to co nejkratší tak, aby se nemršil vysílanej signál -> pokud bude chodit hodně rychlej signál a do PC bude chodit s dalšíma 6 bytama navíc, dostane se ven moc pozdě - to se ale při upravování dostane tak i tak, protože ta naše potvora vysílá rychlostí ničeho... lepší by bylo odesílat jen pakety co se mají měnit; poslední možnost je úplně přepsat komunikaci s počítačem, kdy se už nebude komunikovat po DMX512 ale vlastním protokolem
@@ -665,9 +655,9 @@ void setTo_Analyze()
 	ReceiveFrom_DMX(); //Nastaví příjem z DMX
 	receiveMode=3; //Nastaví odesílání přijatých dat doPC
 	//SwitchToReceiveOnly(); //Rozpojí relé
-	HAL_UARTEx_ReceiveToIdle_IT(uartRx, receiveBuff, toReceive); //Spustí přijímání z DMX
-	HAL_TIM_Base_Start_IT(&htim17);
 	HAL_TIM_Base_Start_IT(&htim2); //Spustí časovač na odesílání signálu do PC
+	HAL_UART_Transmit_IT(&huart1, sendToPC, 520); //Odeslání do PC - samostatnej timer
+	HAL_UARTEx_ReceiveToIdle_IT(&huart2, receiveBuff, toReceive); //Spustí přijímání z DMX
 }
 void setTo_GenerateOnPC()
 {
@@ -675,7 +665,7 @@ void setTo_GenerateOnPC()
 	SwitchToTransmit(); //Propojí relé
 	sendingToDMX=1; //Povolí odesílání na DMX
 	receiveMode=1; // Nastaví přijímání dat z PC a odesílání do DMX
-	HAL_UARTEx_ReceiveToIdle_IT(uartRx, receiveBuff, toReceive); //Započne přijímání z PC
+	HAL_UARTEx_ReceiveToIdle_IT(&huart1, receiveBuff, toReceive); //Započne přijímání z PC
 	HAL_UART_Transmit_IT(&huart2, sendToDMX, 513); //Započne odesílání na DMX
 }
 void setTo_Modification()
@@ -688,12 +678,15 @@ void setTo_Modification()
 }
 void setTo_AnalyzeLocally() //Nevysílá data
 {
+	menuNav=5;
 	ReceiveFrom_DMX(); //Nastaví příjem z DMX
 	receiveMode=4;
 	//SwitchToReceiveOnly(); //Rozpojí relé
-	HAL_UARTEx_ReceiveToIdle_IT(uartRx, receiveBuff, toReceive); //Započne přijímání na DMX
+	HAL_UARTEx_ReceiveToIdle_IT(&huart2, receiveBuff, 514); //Započne přijímání na DMX++
+	HAL_UARTEx_ReceiveToIdle_IT(&huart2, receiveBuff, 514); //Započne přijímání na DMX
+	HAL_UARTEx_ReceiveToIdle_IT(&huart2, receiveBuff, 514); //Započne přijímání na DMX
+	HAL_UARTEx_ReceiveToIdle_IT(&huart2, receiveBuff, 514); //Započne přijímání na DMX
 	//HAL_UARTEx_ReceiveToIdle_IT(uartRx, receiveBuff, toReceive); //Započne přijímání na DMX
-	HAL_TIM_Base_Start_IT(&htim17);
 }
 void setTo_GenerateLocally() //Nepřijímá data
 {
@@ -705,7 +698,7 @@ void stopAll()
 {
 	HAL_TIM_Base_Stop_IT(&htim2); //Zastaví odesílání do PC
 	sendingToDMX=0; //Ukončí odesílání na DMX
-	//receiveMode=5; //Ukončí příjem dat
+	receiveMode=5; //Ukončí příjem dat
 	SwitchToReceiveOnly(); //Rozpojí relé
 	packetsSentAfterStart=0; //Snuluje bugfix
 }
