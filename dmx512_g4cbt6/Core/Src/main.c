@@ -90,35 +90,13 @@ int main(void)
 		{
 			receiveBuff[i]=0;
 		}
-	receiveBuff[0]=0;
-	receiveBuff[1]=0;
-	receiveBuff[2]=255;
-	receiveBuff[3]=255;
-	receiveBuff[4]=255;
-	receiveBuff[5]=255;
-	receiveBuff[506]=1;
-	receiveBuff[507]=2;
-	receiveBuff[508]=3;
-	receiveBuff[509]=4;
-	receiveBuff[510]=5;
-	receiveBuff[511]=255;
-	receiveBuff[512]=255;
 
-	for(int i=0;i<515;i++)
+	for(int i=0;i<520;i++)
 		{
 			sendToPC[i]=0;
 		}
-	sendToPC[0]=121;
+	sendToPC[0]=121; //Nastavení vlastního protokolu
 	sendToPC[1]=122;
-	sendToPC[2]=253;
-	sendToPC[3]=254;
-	sendToPC[4]=255;
-	sendToPC[507]=1;
-	sendToPC[508]=2;
-	sendToPC[509]=3;
-	sendToPC[510]=4;
-	sendToPC[511]=5;
-	sendToPC[512]=6;
 	sendToPC[518]=131;
 	sendToPC[519]=132;
 
@@ -126,19 +104,6 @@ int main(void)
 		{
 			sendToDMX[i]=0;
 		}
-	sendToDMX[0]=0;
-	sendToDMX[1]=255;
-	sendToDMX[2]=255;
-	sendToDMX[3]=0;
-	sendToDMX[4]=0;
-	sendToDMX[5]=0;
-	sendToDMX[506]=1;
-	sendToDMX[507]=2;
-	sendToDMX[508]=3;
-	sendToDMX[509]=4;
-	sendToDMX[510]=5;
-	sendToDMX[511]=255;
-	sendToDMX[512]=0;
 
 
   /* USER CODE END 1 */
