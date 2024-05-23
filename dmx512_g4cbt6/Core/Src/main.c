@@ -137,27 +137,9 @@ int main(void)
   //ReceiveFrom_PC();
   //ReceiveFrom_DMX();
   ILI9341_Init();
-  //SwitchToTransmit(); //TODO: přepínatelnej režim - vysílám/nevysílám, ale to až budu mít hotovou komunikaci s PC asi...; Případně vypnutí přijímání a vysílání úplně
-  //HAL_TIM_Base_Start_IT(&htim2);
-  //HAL_UART_Transmit_IT(&huart2, sendToDMX, 513);
   stopAll();
-  /*endingToDMX=1;
-  uartRx = &huart2;
-  SwitchToTransmit(); //TODO: přepínatelnej režim - vysílám/nevysílám, ale to až budu mít hotovou komunikaci s PC asi...; Případně vypnutí přijímání a vysílání úplně
-   HAL_TIM_Base_Start_IT(&htim2);
-   HAL_UART_Transmit_IT(&huart2, sendToDMX, 513);
-   HAL_UARTEx_ReceiveToIdle_IT(uartRx, receiveBuff, toReceive); //Začne přijímání DMX512
-   HAL_UARTEx_ReceiveToIdle_IT(uartRx, receiveBuff, toReceive);*/
   uint16_t position_array[2];
-  //Displejos: //TODO: Tlačítko pro ukončení přijímání (ostatní tlačítka jej zase zapnou (funkce ReceiveFrom_PC bude zapínat)). //Menu: Analyzátor DMX - Přijímač Only (přijíma z DMX); Generátor DMX - Vysílač Only (vysílá z PC); Modifikátor DMX - Přijímač a Vysílač - rele on (přijímá z DMX a PC); Přijímat z PC, Přijímat z DMX; Manuální ovládání - Barvy; Pod menu analýza manuální na zařízení
 
-  /*ILI9341_Draw_Text("Test DMX512", 10, 10, BLACK, 2, WHITE);
-  ILI9341_Draw_Filled_Rectangle_Coord(20, 60, 80, 120, RED);
- 	 ILI9341_Draw_Filled_Rectangle_Coord(20, 140, 80, 200, GREEN);
- 	 ILI9341_Draw_Filled_Rectangle_Coord(20, 220, 80, 280, BLUE);
- 	ILI9341_Draw_Filled_Rectangle_Coord(160, 60, 220, 120, PINK);
- 	ILI9341_Draw_Filled_Rectangle_Coord(160, 140, 220, 200, LIGHTGREY);
- 	ILI9341_Draw_Filled_Rectangle_Coord(160, 220, 220, 280, DARKGREY);*/
   Draw_MainMenu1_Horizontal();
   menuNav=1;
   /* USER CODE END 2 */
@@ -235,21 +217,22 @@ while (1)
 				if(valueOffset<495)
 				{
 					valueOffset+=18;
+					ILI9341_Draw_Text("     ", 140, 195, BLACK, 2, LIGHTGREY);
 					char page[7];
 					sprintf(page, " %d/29 ", valueOffset/18+1);
 					ILI9341_Draw_Text(page, 133, 220, BLACK, 2, LIGHTGREY);
-					HAL_Delay(50);
+					HAL_Delay(90);
 				}
 				else
 				{
 					ILI9341_Fill_Screen(LIGHTGREY);
 					Draw_NavigationBar_Left_Horizontal();
 					ILI9341_Draw_Text("Manualni analyza", 3, 1, BLACK, 2, LIGHTGREY);
-					Draw_NavigationBar_Right_Horizontal();
+					//Draw_NavigationBar_Right_Horizontal(); //smazat
 					char page[7];
 					sprintf(page, " %d/29 ", valueOffset/18+1);
 					ILI9341_Draw_Text(page, 133, 220, BLACK, 2, LIGHTGREY);
-					HAL_Delay(50);
+					HAL_Delay(90);
 				}
 			}
 			if(x_pos>20&&y_pos>85&&x_pos<300&&y_pos<135&&menuNav==2)
@@ -278,141 +261,20 @@ while (1)
 				{
 					menuNav=2;
 					Draw_MainMenu2_Horizontal();
+					stopAll();
 				}
 				else
 				{
 					valueOffset-=18;
 					char page[7];
-					sprintf(page, " %d/28 ", valueOffset/18+1);
+					sprintf(page, " %d/29 ", valueOffset/18+1);
 					ILI9341_Draw_Text(page, 133, 220, BLACK, 2, LIGHTGREY);
-					HAL_Delay(50);
-					stopAll();
+					HAL_Delay(90);
+					//stopAll();
 				}
 			}
-			/*menuNav=1;
-			ILI9341_Set_Rotation(SCREEN_HORIZONTAL_2);
-			ILI9341_Fill_Screen(DARKGREY);
-			ILI9341_Draw_Text("DMX512 ANALYZATOR", 58, 5, BLACK, 2, DARKGREY);
-			ILI9341_Draw_Filled_Rectangle_Coord(20, 29, 300, 79, LIGHTGREY); //+10
-			ILI9341_Draw_Text("Analyza signalu", 68, 44, BLACK, 2, LIGHTGREY); //+5
-			ILI9341_Draw_Filled_Rectangle_Coord(20, 85, 300, 135, LIGHTGREY);
-			ILI9341_Draw_Text("Generovani signalu", 48, 100, BLACK, 2, LIGHTGREY);
-			ILI9341_Draw_Filled_Rectangle_Coord(20, 141, 300, 191, LIGHTGREY);
-			ILI9341_Draw_Text("Modifikace signalu", 48, 156, BLACK, 2, LIGHTGREY);
-			ILI9341_Draw_Filled_Rectangle_Coord(20, 172, 300, 212, LIGHTGREY);
-			ILI9341_Draw_Text("Manualni analyza", 22, 172, BLACK, 2, LIGHTGREY);
-			ILI9341_Draw_Filled_Rectangle_Coord(20, 218, 300, 258, LIGHTGREY);
-			ILI9341_Draw_Text("Manualni gen.", 38, 218, BLACK, 2, LIGHTGREY);
-			ILI9341_Draw_Text("1/2", 145, 220, BLACK, 2, DARKGREY);
-			Draw_NavigationBar_Right_Horizontal();*/
-			 /* if(x_pos>20&&x_pos<80&&y_pos>60&&y_pos<120)
-			  {
-				  sendToDMX[2]=255;
-				  sendToDMX[3]=0;
-				  sendToDMX[4]=0;
-				  sendToDMX[5]=0;
-				  ILI9341_Draw_Hollow_Rectangle_Coord(18, 58, 82, 122, WHITE);
-				  xmin=18;
-				  xmax=82;
-				  ymin=58;
-				  ymax=122;
-				  HAL_TIM_Base_Start_IT(&htim17); //Místo časovače dát permanentní volítko barev
-
-			  }
-			  if(x_pos>20&&x_pos<80&&y_pos>140&&y_pos<200)
-			  {
-				  sendToDMX[2]=0;
-				  sendToDMX[3]=255;
-				  sendToDMX[4]=0;
-				  sendToDMX[5]=0;
-				  ILI9341_Draw_Hollow_Rectangle_Coord(18, 138, 82, 202, WHITE);
-				  xmin=18;
-				  xmax=82;
-				  ymin=138;
-				  ymax=202;
-				  HAL_TIM_Base_Start_IT(&htim17);
-			  }
-			  if(x_pos>20&&x_pos<80&&y_pos>220&&y_pos<280)
-			  {
-				  sendToDMX[2]=0;
-				  sendToDMX[3]=0;
-				  sendToDMX[4]=255;
-				  sendToDMX[5]=0;
-				  ILI9341_Draw_Hollow_Rectangle_Coord(18, 218, 82, 282, WHITE);
-				  xmin=18;
-				  xmax=82;
-				  ymin=218;
-				  ymax=282;
-				  HAL_TIM_Base_Start_IT(&htim17);
-			  }
-			  if(x_pos>160&&x_pos<220&&y_pos>60&&y_pos<120)
-			  {
-				  sendToDMX[2]=255;
-				  sendToDMX[3]=0;
-				  sendToDMX[4]=0;
-				  sendToDMX[5]=255;
-				  ILI9341_Draw_Hollow_Rectangle_Coord(158, 58, 222, 122, WHITE);
-				  xmin=158;
-				  xmax=222;
-				  ymin=58;
-				  ymax=122;
-				  HAL_TIM_Base_Start_IT(&htim17);
-
-			  }
-			  if(x_pos>160&&x_pos<220&&y_pos>140&&y_pos<200)
-			  {
-				  ReceiveFrom_PC();
-
-			  }
-			  if(x_pos>160&&x_pos<220&&y_pos>220&&y_pos<280)
-			  {
-				  ReceiveFrom_DMX();
-
-			  }
-*/
 	  }
 }
-
-		  /*ILI9341_Fill_Screen(RED);
-		  	  		ILI9341_Set_Rotation(SCREEN_HORIZONTAL_2);
-		  	  		ILI9341_Draw_Text("Dotykova obrazovka", 10, 10, BLACK, 2, WHITE);
-		  	  		ILI9341_Draw_Text("Muzete kreslit", 10, 30, GREEN, 2, WHITE);
-		  	  		//ILI9341_Set_Rotation(SCREEN_VERTICAL_1);
-		  	  		//HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
-		  	  		while(1)
-		  	  		{
-		  	  			if(TP_Touchpad_Pressed())
-		  	          {
-
-		  	  					uint16_t x_pos = 0;
-		  	  					uint16_t y_pos = 0;
-
-
-		  	            uint16_t position_array[2];
-
-		  	  					if(TP_Read_Coordinates(position_array) == TOUCHPAD_DATA_OK)
-		  	  					{
-
-		  	  						x_pos = -(position_array[1]-320);
-		  	  						y_pos = position_array[0];
-
-		  	  						ILI9341_Draw_Filled_Circle(x_pos, y_pos, 2, BLACK);
-
-		  	  						ILI9341_Set_Rotation(SCREEN_HORIZONTAL_2);
-		  	  						char counter_buff[30];
-		  	  						sprintf(counter_buff, "POZ X: %.3d", x_pos);
-		  	  						ILI9341_Draw_Text(counter_buff, 10, 80, BLACK, 2, WHITE);
-		  	  						sprintf(counter_buff, "POZ Y: %.3d", y_pos);
-		  	  						ILI9341_Draw_Text(counter_buff, 10, 120, BLACK, 2, WHITE);
-
-
-		  	  						//ILI9341_Set_Rotation(SCREEN_VERTICAL_1);
-		  	  					}
-
-
-
-		  	          }
-		  	  		}*/
 
     /* USER CODE END WHILE */
 
@@ -478,7 +340,6 @@ void SwitchToReceiveOnly()
 }
 void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size) //Po prijmuti celeho paketu:
 {
-	//---------------------------Nastavit, že tohle je jen pro příjem z UART2; pro UART1 nastavit něco jinýho a svůj program doladit dle FreeStyleru (pokud ti to nepůjde, vykašli se na to a řeš příjem)
 	//Ukladani dat pro vysilani na DMX512 na zaklade toho, odkud byly prijate
 	if(receiveMode==1) //Z PC do DMX
 	{
@@ -486,15 +347,14 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size) //Po p
 	}
 	else if(receiveMode==2)//receiveMode==2 //Z DMX do DMX
 	{
-		/*for(int i=0; i<513; i++) //Pro UART2 příjem (vyzkoušet pak s jinejma pultama) //zkontrolovat ten poslední byte.... //vymyslet bezposunovou variantu. - přehodit nad Receive
+		/*for(int i=0; i<513; i++) //Pro UART2 příjem (vyzkoušet pak s jinými pulty)
 		{
 			sendToDMX[i]=receiveBuff[i+1]; //+1 pro uart2 TODO:memcpy(&a1[50], &a2[50], 10 * sizeof a[0]);
 		}*/
 		memcpy(&sendToDMX[0], &receiveBuff[1], 513 * sizeof(uint8_t));
 	}
 	HAL_UARTEx_ReceiveToIdle_IT(uartRx, receiveBuff, toReceive);
-	//memcpy(&sendToPC[2], &receiveBuff[1], 513 * sizeof(uint8_t)); //kopírování //tohle vyřešit
-	if(menuNav==5) //GUI if(menuNav==5)
+	if(menuNav==5) //GUI
 	{
 		if(valueOffset<495)
 		{
@@ -532,9 +392,14 @@ void HAL_UARTEx_RxEventCallback(UART_HandleTypeDef *huart, uint16_t Size) //Po p
 				ILI9341_Draw_Text("       ", 230, 20+(a*10), BLACK, 2, LIGHTGREY);
 			}
 		}
+		if(valueOffset==0)
+		{
+			sprintf(str, "%d:%d  ", 0, receiveBuff[1]);
+			ILI9341_Draw_Text(str, 140, 195, BLACK, 2, LIGHTGREY);
+		}
 	}
 }
-void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) //Po odeslání -- pokud uart2 -> přepnout na IDLE; pokud uart 1 -> nic////////////////////////////////////////////////////
+void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) //Po odeslání -- pokud uart2 -> přepnout na IDLE; pokud uart 1 -> nic
 {
 
 	if(huart==&huart2&&sendingToDMX==1)
@@ -545,7 +410,7 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) //Po odeslání -- pokud
 			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2,GPIO_PIN_SET);
 			uint32_t i;
 			i=1000;
-			while(i--); //MTBF - v blokovacím režimu
+			while(i--); //MBB - v blokovacím režimu
 			HAL_UARTEx_ReceiveToIdle_IT(uartRx, receiveBuff, toReceive); //Aby se přijímal sinál i se spuštěním zařízení a po zapojení kabelu
 			//HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2,GPIO_PIN_SET);
 			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2,GPIO_PIN_RESET);
@@ -555,7 +420,7 @@ void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart) //Po odeslání -- pokud
 		else //Pro všechny další chody v neblokovacím režimu
 		{
 			SwitchPin_ToMode_GPIO_Output();
-			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2,GPIO_PIN_SET); //Tvoří MTBF
+			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2,GPIO_PIN_SET); //Tvoří MBB
 			HAL_TIM_Base_Start_IT(&htim7);
 			HAL_UARTEx_ReceiveToIdle_IT(uartRx, receiveBuff, 514); //Aby se přijímal sinál i se spuštěním zařízení a po zapojení kabelu
 		}
@@ -588,13 +453,6 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim) //Po doběhnutí ča
 	}
 
 }
-//Lze prodloužit reset i MTBF, ale cílem je nechat to co nejkratší tak, aby se nemršil vysílanej signál -> pokud bude chodit hodně rychlej signál a do PC bude chodit s dalšíma 6 bytama navíc, dostane se ven moc pozdě - to se ale při upravování dostane tak i tak, protože ta naše potvora vysílá rychlostí ničeho... lepší by bylo odesílat jen pakety co se mají měnit; poslední možnost je úplně přepsat komunikaci s počítačem, kdy se už nebude komunikovat po DMX512 ale vlastním protokolem
-//1 Dodělat analýzu
-//2 Dodělat SW
-//3 Build SW
-//Zkusit vymyslet algoritmus pro kontrolu časování
-//4 Dopsat práci
-//5 Pak řešit modifikace zpráv
 
 void ReceiveFrom_PC() {
     uartRx = &huart1;
@@ -612,12 +470,9 @@ void setTo_Analyze()
 	ReceiveFrom_DMX(); //Nastaví příjem z DMX
 	receiveMode=3; //Nastaví odesílání přijatých dat doPC
 	//SwitchToReceiveOnly(); //Rozpojí relé
-	//HAL_TIM_Base_Start_IT(&htim2); //Spustí časovač na odesílání signálu do PC
 	sendingToDMX=1;
-	//HAL_UART_Transmit_IT(&huart1, sendToPC, 520); //Odeslání do PC - samostatnej timer
-	HAL_UART_Transmit_IT(&huart2, sendToDMX, 513); //Započne odesílání na DMX
-	//HAL_TIM_Base_Start_IT(&htim17);
-	//HAL_UARTEx_ReceiveToIdle_IT(uartRx, receiveBuff, toReceive); //Spustí přijímání z DMX
+	HAL_UART_Transmit_IT(&huart2, sendToDMX, 513);
+
 }
 void setTo_GenerateOnPC()
 {
@@ -630,24 +485,15 @@ void setTo_GenerateOnPC()
 }
 void setTo_Modification()
 {
-	/*ReceiveFrom_PC(); //Nastaví příjem z PC
-	SwitchToTransmit(); //Propojí relé
-	sendingToDMX=1; //Povolí odesílání na DMX
-	receiveMode=1; // Nastaví přijímání dat z PC a odesílání do DMX
-	HAL_UARTEx_ReceiveToIdle_IT(uartRx, receiveBuff, toReceive); //Započne odesílání na DMX*/
+
 }
 void setTo_AnalyzeLocally() //Nevysílá data
 {
 	menuNav=5;
 	ReceiveFrom_DMX(); //Nastaví příjem z DMX
 	receiveMode=4;
-	//SwitchToReceiveOnly(); //Rozpojí relé
-	//HAL_TIM_Base_Start_IT(&htim17);
 	sendingToDMX=1;
 	HAL_UART_Transmit_IT(&huart2, sendToDMX, 513); //Započne odesílání na DMX
-	//HAL_UARTEx_ReceiveToIdle_IT(uartRx, receiveBuff, toReceive); //Spustí přijímání z DMX
-	//HAL_UARTEx_ReceiveToIdle_IT(uartRx, receiveBuff, toReceive); //Započne přijímání na DMX++
-	//HAL_UARTEx_ReceiveToIdle_IT(uartRx, receiveBuff, toReceive); //Započne přijímání na DMX
 }
 void setTo_GenerateLocally() //Nepřijímá data
 {
