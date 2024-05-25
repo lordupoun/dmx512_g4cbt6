@@ -238,11 +238,15 @@ while (1)
 			}
 			if(x_pos>20&&y_pos>85&&x_pos<300&&y_pos<135&&menuNav==2)
 			{
-				menuNav=4;
+				menuNav=10;
 				ILI9341_Fill_Screen(DARKGREY);
 				Draw_NavigationBar_Left_Horizontal();
-				ILI9341_Draw_Text("Manualni generovani", 0, 0, BLACK, 2, DARKGREY);
+				ILI9341_Draw_Text("Manualni generovani", 3, 1, BLACK, 2, DARKGREY);
+				ILI9341_Draw_Rectangle(20,40,80,80,RED);
+				ILI9341_Draw_Rectangle(120,40,80,80,GREEN);
+				ILI9341_Draw_Rectangle(220,40,80,80,BLUE);
 				setTo_GenerateLocally();
+				HAL_Delay(300);
 			}
 			if(x_pos>0&&y_pos>205&&x_pos<70&&y_pos<240&&menuNav==3) //Zpátky do page1 menu z podmenu
 			{
@@ -256,24 +260,60 @@ while (1)
 				Draw_MainMenu2_Horizontal();
 				stopAll();
 			}
-			if(x_pos>0&&y_pos>205&&x_pos<70&&y_pos<240&&menuNav==5) //Zpátky SUB menu
+			if(x_pos>0&&y_pos>205&&x_pos<70&&y_pos<240&&menuNav==10) //Zpátky do page2 menu z podmenu
 			{
-				if(valueOffset==0)
-				{
-					menuNav=2;
-					Draw_MainMenu2_Horizontal();
-					stopAll();
-				}
-				else
-				{
-					valueOffset-=18;
-					char page[7];
-					sprintf(page, " %d/29 ", valueOffset/18+1);
-					ILI9341_Draw_Text(page, 133, 220, BLACK, 2, LIGHTGREY);
-					HAL_Delay(90);
-					//stopAll();
-				}
+				menuNav=2;
+				Draw_MainMenu2_Horizontal();
+				stopAll();
 			}
+			if(x_pos>20&&y_pos>40&&x_pos<100&&y_pos<120&&menuNav==10) //BarvaRed v manualnim generovani
+			{
+				ILI9341_Draw_Hollow_Rectangle_Coord(18,38,101,121,BLACK);
+				ILI9341_Draw_Hollow_Rectangle_Coord(118,38,201,121,DARKGREY);
+				ILI9341_Draw_Hollow_Rectangle_Coord(218,38,301,121,DARKGREY);
+				sendToDMX[1]=255;
+				sendToDMX[2]=255;
+				sendToDMX[3]=0;
+				sendToDMX[4]=0;
+			}
+			if(x_pos>120&&y_pos>40&&x_pos<200&&y_pos<120&&menuNav==10) //BarvaGreen v manualnim generovani
+			{
+				ILI9341_Draw_Hollow_Rectangle_Coord(18,38,101,121,DARKGREY);
+				ILI9341_Draw_Hollow_Rectangle_Coord(118,38,201,121,BLACK);
+				ILI9341_Draw_Hollow_Rectangle_Coord(218,38,301,121,DARKGREY);
+				sendToDMX[1]=255;
+				sendToDMX[2]=0;
+				sendToDMX[3]=255;
+				sendToDMX[4]=0;
+			}
+			if(x_pos>220&&y_pos>40&&x_pos<300&&y_pos<120&&menuNav==10) //BarvaBlue v manualnim generovani
+			{
+				ILI9341_Draw_Hollow_Rectangle_Coord(18,38,101,121,DARKGREY);
+				ILI9341_Draw_Hollow_Rectangle_Coord(118,38,201,121,DARKGREY);
+				ILI9341_Draw_Hollow_Rectangle_Coord(218,38,301,121,BLACK);
+				sendToDMX[1]=255;
+				sendToDMX[2]=0;
+				sendToDMX[3]=0;
+				sendToDMX[4]=255;
+			}
+			if(x_pos>0&&y_pos>205&&x_pos<70&&y_pos<240&&menuNav==5) //Zpátky SUB menu
+						{
+							if(valueOffset==0)
+							{
+								menuNav=2;
+								Draw_MainMenu2_Horizontal();
+								stopAll();
+							}
+							else
+							{
+								valueOffset-=18;
+								char page[7];
+								sprintf(page, " %d/29 ", valueOffset/18+1);
+								ILI9341_Draw_Text(page, 133, 220, BLACK, 2, LIGHTGREY);
+								HAL_Delay(90);
+								//stopAll();
+							}
+						}
 	  }
 }
 
@@ -504,6 +544,8 @@ void setTo_GenerateLocally() //Nepřijímá data
 {
 	SwitchToTransmit(); //Propojí relé
 	sendingToDMX=1; //Povolí odesílání na DMX
+	receiveMode=5; // Nastaví přijímání dat z PC a odesílání do DMX
+	HAL_UARTEx_ReceiveToIdle_IT(uartRx, receiveBuff, toReceive); //Započne přijímání z PC
 	HAL_UART_Transmit_IT(&huart2, sendToDMX, 513); //Započne odesílání na DMX
 }
 void stopAll()
@@ -513,6 +555,22 @@ void stopAll()
 	receiveMode=5; //Ukončí příjem dat
 	SwitchToReceiveOnly(); //Rozpojí relé
 	packetsSentAfterStart=0; //Snuluje bugfix
+	for(int i=0;i<513;i++)
+		{
+			sendToDMX[i]=0;
+		}
+	for(int i=0;i<520;i++)
+		{
+			sendToPC[i]=0;
+		}
+	for(int i=0;i<520;i++)
+		{
+			sendToPC[i]=0;
+		}
+	sendToPC[0]=121; //Nastavení vlastního protokolu
+	sendToPC[1]=122;
+	sendToPC[518]=131;
+	sendToPC[519]=132;
 }
 
 void SwitchPin_ToMode_GPIO_Output(void) //TODO: přidat nastaveni PINu k prepnuti
