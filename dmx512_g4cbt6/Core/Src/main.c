@@ -133,6 +133,7 @@ int main(void)
   MX_USART2_UART_Init();
   MX_TIM6_Init();
   MX_TIM7_Init();
+  MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
   //ReceiveFrom_PC();
   //ReceiveFrom_DMX();
@@ -433,16 +434,9 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim) //Po doběhnutí ča
 		//uint32_t i;
 		HAL_TIM_Base_Stop_IT(&htim6);
 		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2,GPIO_PIN_SET);
-		//Zde se vytváří MAB samo
-		//i=500000; //Přidat Timer na MAB, lze ji prodloužit dalším časovačem, ale přepnutí chvilku na UART chvíli trvá
-		//while(i--);
-		SwitchPin_ToMode_UART();
-		HAL_UART_Transmit_IT(&huart2, sendToDMX, 513); //TODO: sizeof(receiveBuff)
-		if(receiveMode==3)
-		{
-		memcpy(&sendToPC[2], &receiveBuff[1], 513 * sizeof(uint8_t)); //kopírování
-		HAL_UART_Transmit_IT(&huart1, sendToPC, 520); //Odeslání do PC - samostatnej timer
-		}
+		//Zde se vytváří MAB
+
+		HAL_TIM_Base_Start_IT(&htim3);
 
 	}
 	else if(htim==&htim7)
@@ -450,6 +444,17 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef* htim) //Po doběhnutí ča
 		HAL_TIM_Base_Stop_IT(&htim7);
 		HAL_GPIO_WritePin(GPIOA, GPIO_PIN_2,GPIO_PIN_RESET);
 		HAL_TIM_Base_Start_IT(&htim6);
+	}
+	else if(htim==&htim3)
+	{
+		HAL_TIM_Base_Stop_IT(&htim3);
+		SwitchPin_ToMode_UART();
+		HAL_UART_Transmit_IT(&huart2, sendToDMX, 513); //TODO: sizeof(receiveBuff)
+		if(receiveMode==3)
+		{
+			memcpy(&sendToPC[2], &receiveBuff[1], 513 * sizeof(uint8_t)); //kopírování
+			HAL_UART_Transmit_IT(&huart1, sendToPC, 520); //Odeslání do PC - samostatnej timer
+		}
 	}
 
 }
